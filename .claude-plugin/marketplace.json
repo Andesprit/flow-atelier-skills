@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "flow-atelier-skills",
+  "description": "Agent skills for flow-atelier - authoring and running YAML workflow conduits, and driving the autonomous-projects package.",
+  "owner": {
+    "name": "Andesprit",
+    "url": "https://github.com/Andesprit"
+  },
+  "plugins": [
+    {
+      "name": "flow-atelier-skills",
+      "source": "./",
+      "description": "Two skills: authoring, running, scheduling and debugging flow-atelier conduits, and setting up the autonomous-projects tick bot on a repo.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Andesprit",
+        "url": "https://github.com/Andesprit"
+      },
+      "homepage": "https://github.com/Andesprit/flow-atelier-skills",
+      "repository": "https://github.com/Andesprit/flow-atelier-skills",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "flow-atelier",
+        "atelier",
+        "conduit",
+        "workflow",
+        "yaml",
+        "dag",
+        "orchestration",
+        "acp",
+        "agents",
+        "scheduling",
+        "autonomous-projects"
+      ]
+    }
+  ]
+}
