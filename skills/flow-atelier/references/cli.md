@@ -54,22 +54,33 @@ flow_id: 20260727_0eb21391_loopdemo
 
 On failure it names the failing task and suggests the resume command.
 
-## One-shot (`atelier ask`)
+## Interactive prompts (`atelier ask`)
 
 ```bash
-atelier ask --harness <name> [--cwd <dir>] [--name <task>] [--hide-steps] "prompt"
+atelier ask --harness <name> [--cwd <dir>] [--name <task>] [--hide-steps] [--json] "prompt"
 ```
 
-`ask` runs a **single prompt on one harness** and streams the reply - no
-conduit, no YAML. It is the CLI equivalent of the frontend's "run a single
-task", and the entry point for **multi-agent orchestration**: one AI agent
-(Cloud Code, Codex, opencode, …) shells out to flow-atelier to delegate a
-piece of work to a *different* harness and read back its streamed answer.
+`ask` runs a prompt on one harness and streams the reply - no conduit, no
+YAML. It is the CLI equivalent of the frontend's "run a single task", and the
+entry point for **multi-agent orchestration**: one AI agent (Cloud Code,
+Codex, opencode, …) shells out to flow-atelier to delegate a piece of work to
+a *different* harness and converse with it.
+
+The task is **always interactive**: the harness keeps the session open and,
+if the invoked agent asks a question (ends a turn without `[ATELIER_DONE]`),
+flow-atelier fetches a reply and sends it back, looping until the agent
+signals it is done. An agent that answers once and emits the marker completes
+as an ordinary one-shot - the loop is invisible when unused. There is no turn
+cap on `ask`; the conversation runs until the agent is done, the channel is
+closed, or an explicit stop is sent.
 
 ```bash
+# Human at a keyboard: colored panels; when the agent asks, you type.
 atelier ask --harness claude-code "refactor this function for readability"
 atelier ask --harness codex "write a test for src/auth.py" --cwd ./my-repo
-atelier ask --harness opencode "summarize the changes in the last commit"
+
+# Parent agent (agent-to-agent): JSON-lines over stdio. Agents always pass --json.
+atelier ask --json --harness opencode "summarize the changes in the last commit"
 ```
 
 | Flag | Notes |
@@ -78,20 +89,45 @@ atelier ask --harness opencode "summarize the changes in the last commit"
 | `--cwd` | working directory the harness runs in. Defaults to the current directory |
 | `--name` | cosmetic task name; appears in the flow id (default `ask`) |
 | `--show-steps` / `--hide-steps` | stream intermediate agent thinking and tool activity live (default: show) |
+| `--json` | machine-readable JSON-lines over stdio (agent-to-agent transport). Agents always pass this. Default is human terminal |
 
 Behaviour notes:
 
-- Output streams live exactly like `atelier run` - same per-task panel,
-  heartbeat, and summary footer - then prints the new `flow_id`.
+- Without `--json`, output streams live exactly like `atelier run` - same
+  per-task panel, heartbeat, and summary footer - then prints the new
+  `flow_id`. When the agent asks a question, you type the reply.
 - The prompt is both the task prompt and the task description; the ad-hoc
   conduit is named `task__<name>` and is not saved to `.atelier/conduits/`.
 - The resulting flow lands under `.atelier/flows/` like any other, so it can
   be inspected with `status`/`logs`/`outputs` and resumed with
   `atelier run --resume <flow_id>` if it failed.
-- This is a single-turn delegation today: `ask` runs one harness task. An
-  interactive bidirectional question/answer loop between two agents is not
-  yet supported - for a multi-step pipeline, author a conduit and use
-  `atelier run`.
+
+### Agent-to-agent protocol (`--json`)
+
+`--json` switches the transport to **stdio JSON-lines**: atelier emits one
+JSON object per line on stdout and reads one JSON reply per turn from stdin.
+stdout is pure JSON under `--json` - no panels, colors, or heartbeat.
+
+Outbound events (atelier → parent):
+
+| Event | Meaning |
+|---|---|
+| `{"type":"flow_started","flow_id":"..."}` | once, before the first turn |
+| `{"type":"agent_message","text":"..."}` | streamed text from the invoked agent |
+| `{"type":"request_input","prompt":"..."}` | the agent asked a question - reply now |
+| `{"type":"task_event",...}` | per-iteration status |
+| `{"type":"done","flow_id":"...","output":"..."}` | agent finished; terminal (may carry `"stopped":true`) |
+| `{"type":"error","flow_id":"...","message":"..."}` | failure |
+
+Inbound replies (parent → atelier), only expected after `request_input`:
+
+| Reply | Meaning |
+|---|---|
+| `{"type":"reply","text":"..."}` | send this text as the next turn |
+| `{"type":"stop"}` | end the conversation cleanly |
+
+Closing stdin (EOF) also ends the run cleanly. The `[ATELIER_DONE]` marker is
+internal coordination and never appears in the JSON stream.
 
 ## Inspecting
 

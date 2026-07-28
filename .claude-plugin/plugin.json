@@ -1,6 +1,6 @@
 {
   "name": "flow-atelier-skills",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Agent skills for flow-atelier: authoring, running, scheduling and debugging YAML workflow conduits, plus setting up and operating the autonomous-projects tick bot.",
   "author": {
     "name": "Andesprit",
