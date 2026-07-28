@@ -114,6 +114,7 @@ Outbound events (atelier → parent):
 |---|---|
 | `{"type":"flow_started","flow_id":"..."}` | once, before the first turn |
 | `{"type":"agent_message","text":"..."}` | streamed text from the invoked agent |
+| `{"type":"step","kind":"thinking\|tool_call\|tool_result"[,"tool":"..."][,"status":"..."]}` | intermediate agent activity (a thought, a tool call, a tool result). Only non-empty fields appear: a `thinking` step omits `tool`/`status`, a `tool_call` carries `tool`, a failed `tool_result` carries both |
 | `{"type":"request_input","prompt":"..."}` | the agent asked a question - reply now |
 | `{"type":"task_event",...}` | per-iteration status |
 | `{"type":"done","flow_id":"...","output":"..."}` | agent finished; terminal (may carry `"stopped":true`) |
