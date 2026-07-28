@@ -54,6 +54,45 @@ flow_id: 20260727_0eb21391_loopdemo
 
 On failure it names the failing task and suggests the resume command.
 
+## One-shot (`atelier ask`)
+
+```bash
+atelier ask --harness <name> [--cwd <dir>] [--name <task>] [--hide-steps] "prompt"
+```
+
+`ask` runs a **single prompt on one harness** and streams the reply - no
+conduit, no YAML. It is the CLI equivalent of the frontend's "run a single
+task", and the entry point for **multi-agent orchestration**: one AI agent
+(Cloud Code, Codex, opencode, …) shells out to flow-atelier to delegate a
+piece of work to a *different* harness and read back its streamed answer.
+
+```bash
+atelier ask --harness claude-code "refactor this function for readability"
+atelier ask --harness codex "write a test for src/auth.py" --cwd ./my-repo
+atelier ask --harness opencode "summarize the changes in the last commit"
+```
+
+| Flag | Notes |
+|---|---|
+| `--harness` / `-h` | required. Any `harness:*` from `atelier harness list`. The `harness:` prefix is optional (`claude-code` ≡ `harness:claude-code`). Unknown or not-ready harness exits 1 before any flow starts |
+| `--cwd` | working directory the harness runs in. Defaults to the current directory |
+| `--name` | cosmetic task name; appears in the flow id (default `ask`) |
+| `--show-steps` / `--hide-steps` | stream intermediate agent thinking and tool activity live (default: show) |
+
+Behaviour notes:
+
+- Output streams live exactly like `atelier run` - same per-task panel,
+  heartbeat, and summary footer - then prints the new `flow_id`.
+- The prompt is both the task prompt and the task description; the ad-hoc
+  conduit is named `task__<name>` and is not saved to `.atelier/conduits/`.
+- The resulting flow lands under `.atelier/flows/` like any other, so it can
+  be inspected with `status`/`logs`/`outputs` and resumed with
+  `atelier run --resume <flow_id>` if it failed.
+- This is a single-turn delegation today: `ask` runs one harness task. An
+  interactive bidirectional question/answer loop between two agents is not
+  yet supported - for a multi-step pipeline, author a conduit and use
+  `atelier run`.
+
 ## Inspecting
 
 ```bash

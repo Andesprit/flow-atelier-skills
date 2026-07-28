@@ -1,7 +1,7 @@
 ---
 name: flow-atelier
-description: Author, run, debug, schedule, share and serve flow-atelier conduits - the local-first YAML workflow runner whose steps are shell commands, AI coding agents (Claude Code, Codex, Gemini, opencode, Copilot, Cursor and ~40 more via the ACP registry), nested conduits, and human approval gates. Use when the user mentions flow-atelier, the `atelier` CLI, a conduit or conduit.yaml, a flow or flow_id, `.atelier/`, a harness or `harness:<name>`, `tool:bash` / `tool:hitl` / `tool:conduit`, HITL gates, `depends_on` conditions, repeat/until/while loops, `atelier run/check/plan/serve/schedule/harness/add`, or asks how to write a workflow YAML, wire steps together, loop a step until output matches, gate a step on what a previous step printed, run agents on a timer, or share conduits as a package.
-version: 1.0.0
+description: Author, run, debug, schedule, share and serve flow-atelier conduits - the local-first YAML workflow runner whose steps are shell commands, AI coding agents (Claude Code, Codex, Gemini, opencode, Copilot, Cursor and ~40 more via the ACP registry), nested conduits, and human approval gates. Use when the user mentions flow-atelier, the `atelier` CLI, a conduit or conduit.yaml, a flow or flow_id, `.atelier/`, a harness or `harness:<name>`, `tool:bash` / `tool:hitl` / `tool:conduit`, HITL gates, `depends_on` conditions, repeat/until/while loops, `atelier run/check/plan/serve/schedule/harness/add`, or asks how to write a workflow YAML, wire steps together, loop a step until output matches, gate a step on what a previous step printed, run agents on a timer, delegate a one-shot prompt to a different agent with `atelier ask` (multi-agent orchestration - one agent shelling out to another), or share conduits as a package.
+version: 1.1.0
 ---
 
 # Flow Atelier
@@ -143,6 +143,7 @@ Every command, grouped. Flags and exact behavior: `references/cli.md`.
 ```
 authoring    init · create · check · plan
 running      run [--input --resume --again --show-steps] · stop
+one-shot     ask --harness <name> [--cwd <dir>] "prompt"
 inspecting   status · logs · outputs · timing · list conduits · list flows
 cleanup      rm · prune
 agents       harness list · harness check · harness sync
