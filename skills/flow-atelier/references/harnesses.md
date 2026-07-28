@@ -98,6 +98,10 @@ These override the registry. Both forms take a JSON array of argv.
 By default a harness task runs **one turn** and stops: the prompt goes out, the
 reply comes back, the task's output is that reply.
 
+> For a one-shot prompt with no YAML at all - including delegating to a harness
+> from *another* agent - see `atelier ask` in `cli.md`. It runs a single
+> harness task and streams the reply.
+
 ```yaml
 - long_chat:
     description: work with the agent until it says it is done
