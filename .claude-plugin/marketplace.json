@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "flow-atelier-skills",
-  "description": "Agent skills for flow-atelier - authoring and running YAML workflow conduits, driving the autonomous-projects package, and delegating work to Claude Code through atelier ask.",
+  "description": "Agent skills for flow-atelier - authoring and running YAML workflow conduits, driving the autonomous-projects package, and explicitly requested Claude consultations through atelier ask.",
   "owner": {
     "name": "Andesprit",
     "url": "https://github.com/Andesprit"
@@ -10,7 +10,7 @@
     {
       "name": "flow-atelier-skills",
       "source": "./",
-      "description": "Three skills: authoring, running, scheduling and debugging flow-atelier conduits, setting up the autonomous-projects tick bot on a repo, and delegating a task to Claude Code through the interactive atelier ask harness.",
+      "description": "Three skills: authoring, running, scheduling and debugging flow-atelier conduits, setting up the autonomous-projects tick bot on a repo, and explicitly requested Claude consultations through interactive atelier ask.",
       "version": "1.1.0",
       "author": {
         "name": "Andesprit",

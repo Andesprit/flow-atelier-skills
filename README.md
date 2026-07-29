@@ -8,7 +8,7 @@ agents, nested conduits, and human approval gates.
 |---|---|
 | **flow-atelier** | Authoring `conduit.yaml`, the full `atelier` CLI, harnesses and the ACP registry, scheduling, packages, the HTTP/WS server, and troubleshooting |
 | **autonomous-projects** | Setting up, running, tuning and debugging the [autonomous-projects](https://github.com/Andesprit/autonomous-projects) package: the tick bot that proposes ideas and code reviews into a repo's board and implements approved tasks behind a two-agent review gate |
-| **claude-via-atelier** | Delegating a task to Claude Code through the interactive `atelier ask` harness: answering Claude's follow-up questions, retrieving its final answer, verifying it independently, and reporting both perspectives |
+| **claude-via-atelier** | Explicitly requested Claude consultations through interactive `atelier ask`: answering follow-up questions, retrieving Claude's final answer, verifying it independently, and reporting both perspectives. Ordinary work stays with Codex; requests for other Atelier harnesses use **flow-atelier** |
 
 All three are written for the operator: what to run, in what order, what each
 failure means, and what to do about it. The longer domain guides keep deep

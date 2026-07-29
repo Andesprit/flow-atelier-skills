@@ -1,14 +1,17 @@
 ---
 name: claude-via-atelier
-description: Delegate a task to Claude Code through flow-atelier's interactive `atelier ask`, answer Claude's follow-up questions, retrieve its final answer, verify it independently, and report both perspectives. Use when the user says to delegate, consult Claude, pair with Claude or ask Claude, mentions `atelier ask`, or invokes `$claude-via-atelier`. Where the user has a standing instruction to route work through Claude, use it for every substantive coding, debugging, refactoring, review, planning, research, analysis or writing task. Skip trivial conversational replies and anything the user has forbidden delegating.
+description: Delegate work to Claude Code through Flow Atelier's interactive `atelier ask`, answer Claude's follow-up questions, independently inspect and verify the result, and report Claude's final response alongside Codex's own conclusion. Use only when the user explicitly asks to use, consult, delegate to, pair with, or otherwise ask Claude, or invokes `$claude-via-atelier`; otherwise handle work with Codex. For explicit requests to use another Atelier harness, use the `flow-atelier` skill.
 version: 1.0.0
 ---
 
 # Claude via Atelier
 
-Claude performs the first pass through the locally authenticated Claude Code
-ACP harness. Codex remains present for questions and accountable for the final
-result.
+Use this workflow only after an explicit user request for Claude. Ordinary work
+remains with Codex. For an explicit request to use another Atelier harness, use
+the `flow-atelier` skill.
+
+Claude performs the first pass through the locally authenticated Claude Code ACP
+harness. Codex remains present for questions and accountable for the final result.
 
 Source: <https://github.com/Andesprit/flow-atelier>
 
@@ -40,10 +43,9 @@ role.
    Pass the prompt as one safely quoted argument. Never allow prompt text to
    become shell syntax. Keep the command attached to a live terminal so Claude
    can hand the turn back.
-   - Explicit `$claude-via-atelier` invocation or the user's standing request to
-     always use this skill authorizes sending task-relevant, non-secret context
-     to the local Claude harness. Cite that authorization if sandbox escalation
-     is required.
+   - An explicit request to use, consult, delegate to, or pair with Claude
+     authorizes sending task-relevant, non-secret context to the local Claude
+     harness. Cite that authorization if sandbox escalation is required.
    - If the standalone binary fails with a `semctl` or semaphore permission
      error, retry the same narrowly scoped command with sandbox escalation. This
      is an execution restriction, not a missing Atelier installation.
