@@ -1,7 +1,7 @@
 {
   "name": "flow-atelier-skills",
-  "version": "1.0.0",
-  "description": "Agent skills for flow-atelier: authoring, running, scheduling and debugging YAML workflow conduits, plus setting up and operating the autonomous-projects tick bot.",
+  "version": "1.1.0",
+  "description": "Agent skills for flow-atelier: authoring, running, scheduling and debugging YAML workflow conduits, setting up and operating the autonomous-projects tick bot, and delegating work to Claude Code through the interactive atelier ask harness.",
   "author": {
     "name": "Andesprit",
     "url": "https://github.com/Andesprit"
@@ -16,6 +16,8 @@
     "dag",
     "acp",
     "agents",
-    "autonomous-projects"
+    "autonomous-projects",
+    "claude-code",
+    "delegation"
   ]
 }

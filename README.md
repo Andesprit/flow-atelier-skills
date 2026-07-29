@@ -8,21 +8,23 @@ agents, nested conduits, and human approval gates.
 |---|---|
 | **flow-atelier** | Authoring `conduit.yaml`, the full `atelier` CLI, harnesses and the ACP registry, scheduling, packages, the HTTP/WS server, and troubleshooting |
 | **autonomous-projects** | Setting up, running, tuning and debugging the [autonomous-projects](https://github.com/Andesprit/autonomous-projects) package: the tick bot that proposes ideas and code reviews into a repo's board and implements approved tasks behind a two-agent review gate |
+| **claude-via-atelier** | Delegating a task to Claude Code through the interactive `atelier ask` harness: answering Claude's follow-up questions, retrieving its final answer, verifying it independently, and reporting both perspectives |
 
-Both are written for the operator: what to run, in what order, what each failure
-means, and what to do about it. Deep material lives in each skill's
-`references/` and is read on demand rather than loaded up front.
+All three are written for the operator: what to run, in what order, what each
+failure means, and what to do about it. The longer domain guides keep deep
+material in `references/` folders so it is read on demand rather than loaded up
+front.
 
 ## Install
 
-### As a Claude Code plugin (both skills)
+### As a Claude Code plugin (all skills)
 
 ```
 /plugin marketplace add Andesprit/flow-atelier-skills
 /plugin install flow-atelier-skills@flow-atelier-skills
 ```
 
-### With the `skills` CLI (pick either or both)
+### With the `skills` CLI (pick any)
 
 ```bash
 npx skills add Andesprit/flow-atelier-skills
@@ -55,6 +57,8 @@ skills/
   autonomous-projects/
     SKILL.md
     references/         architecture, troubleshooting
+  claude-via-atelier/
+    SKILL.md
 ```
 
 `skills/<name>/SKILL.md` is the path both installers resolve: the `skills` CLI
