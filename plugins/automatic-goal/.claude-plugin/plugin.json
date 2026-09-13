@@ -1,0 +1,10 @@
+{
+  "name": "automatic-goal",
+  "description": "Run time-bounded goal exploration with shared decisions, Codex proposals and reviews, and Claude Code implementation.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Andesprit"
+  },
+  "homepage": "https://github.com/Andesprit/flow-atelier-skills",
+  "license": "MIT"
+}

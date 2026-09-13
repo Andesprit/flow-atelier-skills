@@ -1,40 +1,25 @@
 {
-  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "flow-atelier-skills",
-  "description": "Agent skills for flow-atelier - authoring and running YAML workflow conduits, driving the autonomous-projects package, and explicitly requested Claude consultations through atelier ask.",
+  "description": "Three plugins for Flow Atelier, autonomous project boards, and time-bounded automatic goals.",
   "owner": {
     "name": "Andesprit",
     "url": "https://github.com/Andesprit"
   },
   "plugins": [
     {
-      "name": "flow-atelier-skills",
-      "source": "./",
-      "description": "Three skills: authoring, running, scheduling and debugging flow-atelier conduits, setting up the autonomous-projects tick bot on a repo, and explicitly requested Claude consultations through interactive atelier ask.",
-      "version": "1.1.0",
-      "author": {
-        "name": "Andesprit",
-        "url": "https://github.com/Andesprit"
-      },
-      "homepage": "https://github.com/Andesprit/flow-atelier-skills",
-      "repository": "https://github.com/Andesprit/flow-atelier-skills",
-      "license": "MIT",
-      "category": "productivity",
-      "keywords": [
-        "flow-atelier",
-        "atelier",
-        "conduit",
-        "workflow",
-        "yaml",
-        "dag",
-        "orchestration",
-        "acp",
-        "agents",
-        "scheduling",
-        "autonomous-projects",
-        "claude-code",
-        "delegation"
-      ]
+      "name": "flow-atelier",
+      "description": "General Flow Atelier operation: conduits, schedules, harnesses, and Claude consultations.",
+      "source": "./plugins/flow-atelier"
+    },
+    {
+      "name": "autonomous-projects",
+      "description": "Operate the autonomous-projects conduit and project board.",
+      "source": "./plugins/autonomous-projects"
+    },
+    {
+      "name": "automatic-goal",
+      "description": "Run time-bounded goal exploration with shared decisions, Codex proposals and reviews, and Claude Code implementation.",
+      "source": "./plugins/automatic-goal"
     }
   ]
 }

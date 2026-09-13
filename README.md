@@ -1,70 +1,107 @@
-# flow-atelier-skills
+# Flow Atelier plugin marketplace
 
-Agent skills for [flow-atelier](https://github.com/Andesprit/flow-atelier), the
-local-first YAML workflow runner whose steps are shell commands, AI coding
-agents, nested conduits, and human approval gates.
+Three independently installable Claude Code plugins for Flow Atelier.
 
-| Skill | Covers |
-|---|---|
-| **flow-atelier** | Authoring `conduit.yaml`, the full `atelier` CLI, harnesses and the ACP registry, scheduling, packages, the HTTP/WS server, and troubleshooting |
-| **autonomous-projects** | Setting up, running, tuning and debugging the [autonomous-projects](https://github.com/Andesprit/autonomous-projects) package: the tick bot that proposes ideas and code reviews into a repo's board and implements approved tasks behind a two-agent review gate |
-| **claude-via-atelier** | Explicitly requested Claude consultations through interactive `atelier ask`: answering follow-up questions, retrieving Claude's final answer, verifying it independently, and reporting both perspectives. Ordinary work stays with Codex; requests for other Atelier harnesses use **flow-atelier** |
+| Plugin | Included skills | Purpose |
+|---|---|---|
+| `flow-atelier` | `flow-atelier`, `claude-via-atelier` | Understand Atelier; author, run and debug conduits; configure schedules, harnesses and packages; consult Claude through Atelier |
+| `autonomous-projects` | `autonomous-projects` | Operate the autonomous-projects conduit, project board, proposal counts and approved-task workflow |
+| `automatic-goal` | `automatic-goal` | Run goal exploration in any supported Git project: Codex proposes, Claude Code implements, Codex reviews; preserve shared local decisions |
 
-All three are written for the operator: what to run, in what order, what each
-failure means, and what to do about it. The longer domain guides keep deep
-material in `references/` folders so it is read on demand rather than loaded up
-front.
+These plugins provide agent instructions. They do not install the Atelier CLI,
+authenticate agents, install executable conduits, or start runs.
 
-## Install
+## Install plugins in Claude Code
 
-### As a Claude Code plugin (all skills)
+Register the marketplace once, then install whichever plugins you need:
 
-```
+```text
 /plugin marketplace add Andesprit/flow-atelier-skills
-/plugin install flow-atelier-skills@flow-atelier-skills
+/plugin install flow-atelier@flow-atelier-skills
+/plugin install autonomous-projects@flow-atelier-skills
+/plugin install automatic-goal@flow-atelier-skills
 ```
 
-### With the `skills` CLI (pick any)
+Each plugin includes its own skills and references; none requires another plugin.
+The marketplace identifier remains `flow-atelier-skills`.
+
+### Migrating from the old bundled plugin
+
+The former `flow-atelier-skills` plugin is replaced by the three entries above.
+Refresh the existing marketplace, install your chosen plugins, then uninstall the
+old bundle to avoid duplicate skills:
+
+```text
+/plugin marketplace update flow-atelier-skills
+/plugin install flow-atelier@flow-atelier-skills
+/plugin install autonomous-projects@flow-atelier-skills
+/plugin install automatic-goal@flow-atelier-skills
+/plugin uninstall flow-atelier-skills@flow-atelier-skills
+```
+
+Restart Claude Code after changing plugins if the active session still shows old skills.
+
+## Install skills in other agents
+
+Use the skills CLI against an individual plugin directory, for example:
 
 ```bash
-npx skills add Andesprit/flow-atelier-skills
+npx skills add https://github.com/Andesprit/flow-atelier-skills/tree/main/plugins/automatic-goal
 ```
 
-This works for any agent the CLI supports (Claude Code, Codex, Cursor, opencode,
-Gemini CLI, Copilot and others), not just Claude Code.
+Or copy a skill folder from `plugins/<plugin>/skills/<skill>/` into the skill directory
+supported by your agent. Keep each skill's references with it.
 
-### By hand
+## Install the executable workflow packages
 
-Copy the skill folder you want into `~/.claude/skills/` or a project's
-`.claude/skills/`:
+Run these separately in the project where you intend to use the conduits:
 
 ```bash
-git clone https://github.com/Andesprit/flow-atelier-skills.git
-cp -R flow-atelier-skills/skills/flow-atelier ~/.claude/skills/
+atelier add Andesprit/autonomous-projects --project
+atelier add Andesprit/automatic-goal --project
 ```
 
-## Layout
+The automatic-goal skill explains dedicated worktree setup, required environment,
+remaining-usage thresholds and shared decision history. Installing its plugin does
+not authorize or start an autonomous run.
 
-```
+## Repository layout
+
+```text
 .claude-plugin/
-  marketplace.json      the Claude Code marketplace manifest
-  plugin.json           the plugin manifest
-skills/
+  marketplace.json
+plugins/
   flow-atelier/
-    SKILL.md
-    references/         conduit-yaml, cli, harnesses, scheduling,
-                        packages, serve-and-api, troubleshooting
+    .claude-plugin/plugin.json
+    skills/
+      flow-atelier/SKILL.md
+      flow-atelier/references/
+      claude-via-atelier/SKILL.md
   autonomous-projects/
-    SKILL.md
-    references/         architecture, troubleshooting
-  claude-via-atelier/
-    SKILL.md
+    .claude-plugin/plugin.json
+    skills/autonomous-projects/
+      SKILL.md
+      references/
+  automatic-goal/
+    .claude-plugin/plugin.json
+    skills/automatic-goal/SKILL.md
 ```
 
-`skills/<name>/SKILL.md` is the path both installers resolve: the `skills` CLI
-discovers skills there, and the marketplace plugin sources `./`, so one tree
-serves both without duplication.
+Plugin sources are relative paths within this repository. Each plugin is self-contained
+so installing one copies everything its skills require.
+
+## Validate changes
+
+```bash
+claude plugin validate .
+claude plugin validate plugins/flow-atelier
+claude plugin validate plugins/autonomous-projects
+claude plugin validate plugins/automatic-goal
+```
+
+Bump the affected plugin's version when publishing changes. Plugin packaging follows
+the [Claude Code marketplace documentation](https://code.claude.com/docs/en/plugin-marketplaces).
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
