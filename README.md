@@ -6,7 +6,7 @@ Three independently installable Claude Code plugins for Flow Atelier.
 |---|---|---|
 | `flow-atelier` | `flow-atelier`, `claude-via-atelier` | Understand Atelier; author, run and debug conduits; configure schedules, harnesses and packages; consult Claude through Atelier |
 | `autonomous-projects` | `autonomous-projects` | Operate the autonomous-projects conduit, project board, proposal counts and approved-task workflow |
-| `automatic-goal` | `automatic-goal` | Run goal exploration in any supported Git project: Codex proposes, Claude Code implements, Codex reviews; preserve shared local decisions |
+| `automatic-goal` | `automatic-goal`, `goal-report`, `goal-monitor` | Pursue user outcomes with Codex supervision and review, Claude implementation and repair, and evidence-backed session reports |
 
 These plugins provide agent instructions. They do not install the Atelier CLI,
 authenticate agents, install executable conduits, or start runs.
@@ -62,7 +62,7 @@ atelier add Andesprit/automatic-goal --project
 ```
 
 The automatic-goal skill explains dedicated worktree setup, required environment,
-remaining-usage thresholds and shared decision history. Installing its plugin does
+outcome planning, time and usage reserves, bounded repair and shared decision history. Installing its plugin does
 not authorize or start an autonomous run.
 
 ## Repository layout
@@ -84,7 +84,10 @@ plugins/
       references/
   automatic-goal/
     .claude-plugin/plugin.json
-    skills/automatic-goal/SKILL.md
+    skills/
+      automatic-goal/SKILL.md
+      goal-report/SKILL.md
+      goal-monitor/SKILL.md
 ```
 
 Plugin sources are relative paths within this repository. Each plugin is self-contained
@@ -105,3 +108,20 @@ the [Claude Code marketplace documentation](https://code.claude.com/docs/en/plug
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Goal reports and live monitoring
+
+The automatic-goal plugin includes `goal-report` for session retrospectives and `goal-monitor`
+for a read-only local dashboard. Reports lead with outcome status, elapsed time, completed
+improvements and open work. Each completed change and discarded approach gets a paragraph
+covering what, why and how; discarded ideas also explain why they were dropped. Evidence,
+validation and technical history remain available below the summary (`report --details`).
+The dashboard refreshes saved records every three seconds. Usage is a recorded sample,
+not a live provider balance; accepted milestones are not proof of whole-goal completion.
+
+Version 2.0.0 guidance matches the outcome-driven automatic-goal conduits: persistent briefs,
+opportunity comparisons, multiple commits per milestone, ACCEPT/REVISE/ABANDON decisions,
+a default 20% finishing reserve, bounded recovery and a final demonstration. Install both
+updated conduits together after finishing or inspecting existing runs, preserving local edits.
+Do not resume legacy KEEP/DISCARD flows with the new workflow; their history remains readable.
+Installing this plugin supplies instructions, not the executable reader or web assets.

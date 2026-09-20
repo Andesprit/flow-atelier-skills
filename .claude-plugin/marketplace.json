@@ -18,7 +18,7 @@
     },
     {
       "name": "automatic-goal",
-      "description": "Run time-bounded goal exploration with shared decisions, Codex proposals and reviews, and Claude Code implementation.",
+      "description": "Operate outcome-driven goal runs, bounded review and repair, session reports, and a read-only local dashboard.",
       "source": "./plugins/automatic-goal"
     }
   ]
