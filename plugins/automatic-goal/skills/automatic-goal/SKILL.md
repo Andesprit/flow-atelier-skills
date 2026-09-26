@@ -60,7 +60,7 @@ variable keeps Claude's implementation and checks in the foreground until the tu
 |---|---|---|
 | `hours` | required | Positive wall-clock hours, decimals allowed, up to 720 |
 | `goal` | required | User outcome sought |
-| `finish_reserve_percent` | 20 | Last 5–50% of time reserved for integration, repairs and demonstration |
+| `finish_reserve_percent` | 10 | Last 5–50% of time reserved for integration, repairs and demonstration |
 | `max_revisions` | 2 | 0–5 repair rounds per milestone; also bounds integration repair milestones |
 | `usage_reserve_percent` | 5 | 0–25 extra percentage points above each floor needed to start features |
 | `min_claude_fable_remaining` | 50 | Claude model-specific Fable weekly remaining floor |
@@ -71,12 +71,15 @@ variable keeps Claude's implementation and checks in the foreground until the tu
 Floors refer to remaining percentages. Fable is the specific model meter, not Claude's
 all-model total. All three meters must be readable and at or above their floor to run
 a stage. New features additionally require the usage reserve; review, repairs and
-final demonstration can use that buffer but must still respect the floors. Unknown
+final demonstration can use that buffer but must still respect the floors. Below a floor,
+or inside the buffer before new work, the run waits for a reset instead of ending. Unknown
 telemetry pauses. Preserve user overrides; do not lower floors, switch models, purchase
 credits or reset usage to force progress.
 
-Planning and pauses consume the same wall-clock budget. New milestone estimates include
-implementation and review and must fit before the finishing reserve. Repairs must leave
+Planning and pauses consume the same wall-clock budget. The run never finishes early: it
+keeps building until the finishing reserve, then demonstrates. New milestone estimates include
+implementation and review and must fit before the finishing reserve; a milestone that does
+not fit is refused and the supervisor picks a smaller one. Repairs must leave
 a final handoff allowance (5% of the run, capped at five minutes). These are planning
 constraints, not speed guarantees. At the deadline the controller writes a partial
 handoff without starting another agent. Already-started agent turns have a soft deadline:
@@ -109,34 +112,42 @@ Each `goal_iteration` executes one stage or one usage pause, not one idea or com
 
 1. **SUPERVISE:** inspect the actual user path and record its baseline, success criteria
    and behavior to preserve. Normally compare three to five opportunities (at least two
-   credible alternatives) by benefit, evidence, effort and uncertainty. Choose a primary
-   and fallback and explain why the primary deserves the time. Use competitor research
-   to resolve a named uncertainty when useful. Retain the brief across milestones;
-   changing it requires an evidence-backed replan. At checkpoints choose to build,
-   simplify, switch, finish or report a blocker.
+   credible alternatives), ranked by upside; uncertainty is a reason to try, not to skip.
+   Choose a primary and fallback and explain why the primary deserves the time. Use
+   competitor and best-in-class research when it sharpens or enlarges an idea. Retain the
+   brief across milestones; changing it requires an evidence-backed replan, but new ideas
+   can be added at any checkpoint. Meeting the criteria means raising the bar, not
+   finishing. At checkpoints choose to build, simplify or switch; each milestone states its
+   ambition (bold, normal, polish), upside, risk and which accepted milestones it builds on.
 2. **IMPLEMENT:** Claude completes a coherent, independently useful milestone across as
    many files and focused commits as needed. Commits extend its recorded base without
    merging or rewriting history. Match checks to risk and scope; record evidence and
-   elapsed time. A repair continues the same milestone and addresses review findings.
+   elapsed time. A repair continues the same milestone and addresses review findings. An
+   unworkable idea returns BLOCKED with what was tried and why it failed; its code is saved
+   under a ref and the run continues.
 3. **REVIEW:** Codex independently assesses correctness and contribution to the user
-   outcome. ACCEPT retains useful, reliable work. REVISE sends concrete findings and
-   completion criteria to Claude for bounded repair. ABANDON records weak value, a
+   outcome and scores how much is ready as is. ACCEPT retains useful, reliable work that is
+   at least 70% ready; small issues become notes for the human. REVISE sends concrete
+   blocking findings and completion criteria to Claude for bounded repair. ABANDON records weak value, a
    disproven hypothesis or unjustified repair cost. Exhausted repair budgets become
-   DEFERRED rather than a claim that the idea was bad. Before rollback, abandoned or
-   deferred commits are saved under `refs/automatic-goal/<run-id>/<milestone-id>`;
+   DEFERRED rather than a claim that the idea was bad. None of these end the run. Before
+   rollback, abandoned, deferred or blocked commits are saved under `refs/automatic-goal/<run-id>/<milestone-id>`;
    earlier accepted work remains. Unexpected or dirty Git state is preserved for inspection.
 4. **FINALIZE:** revisit the original user path on the accepted branch. Demonstrate each
    success criterion with before/after evidence, integrated checks and limitations.
    Use screenshots/recordings for UI work and reproducible commands for agent workflows.
    Narrow integration repairs can use the reserve. ACHIEVED requires evidence for every
    criterion; PARTIAL/BLOCKED identify what remains. Passing tests, elapsed time and
-   accepted commit counts do not establish outcome achievement. Finishing early is valid.
+   accepted commit counts do not establish outcome achievement. The report lists each
+   accepted milestone with reviewer notes and a `git cherry-pick <base>..<head>` command so
+   the human can pick which ones to keep.
 
 Nothing is pushed or deployed by the conduit. Agents write request-bound JSON following
 `.atelier/conduits/goal_iteration/stage-results.md`; final chat markers do not control it.
 Missing, malformed or stale results get two recovery attempts with the same request ID
 and actual Git state, so completed implementation is not repeated. Exhaustion becomes
-OPERATIONAL_FAILURE, not ABANDON. A genuine implementation blocker preserves the work.
+OPERATIONAL_FAILURE, not ABANDON. An implementation blocker preserves the work and only
+retires that milestone.
 
 ## Records, reports and recovery
 
