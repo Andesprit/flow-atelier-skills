@@ -7,8 +7,8 @@ atelier serve [--host 127.0.0.1] [--port 8000] [--reload-interval 30.0] \
 
 One process hosting both the HTTP/WebSocket API and the scheduler daemon. It is
 the entry point the Flow Atelier visual frontend connects to - the designer lays
-a conduit out by dependency depth, and runs stream to a dashboard including HITL
-gates.
+a conduit out by dependency depth, runs stream to a dashboard including HITL
+gates, and every flow gets a live run page (see below).
 
 `--port 0` picks an ephemeral port. `--cors-origin` is repeatable.
 
@@ -28,7 +28,30 @@ gates.
 | `DELETE` | `/schedules/:id` | Soft-delete |
 | `GET` | `/flows` | List prior flows |
 | `GET` | `/flows/:id/logs` | Per-flow log entries |
+| `GET` | `/flows/:id` | Tasks, dependencies and progress |
+| `GET` | `/flows/:id/tasks/:task/log` | One task's rounds and actions, secrets masked |
 | `WS` | `/ws/run-conduit` | Run flows and answer HITL gates over a socket |
+| `WS` | `/ws/flows/:id` | The run page's feed: its map and one task's log, pushed as they change |
+
+## Run pages
+
+Every flow has a page at `/runs/<flow_id>`: a map of its tasks with the running
+ones framed, and the log of whichever task you click (agent reads, edits,
+commands and messages, plus shell output line by line). The server follows the
+run's files and pushes changes within a quarter second. It works for flows
+started from the CLI, the dashboard or the scheduler.
+
+`atelier run`, `--resume`, `--again` and `atelier ask` print the link when the
+flow starts: `· run page http://127.0.0.1:8000/runs/<flow_id>`. The base comes
+from `ATELIER_SERVE_URL` (default `http://127.0.0.1:8000`); the CLI does not
+check that a server is up.
+
+The page loads only while `atelier serve` runs from the **same directory** as
+the run, because the server reads flows from its own `./.atelier/`. A quick
+probe: `GET /flows/<flow_id>` answers `200` when the server sees the run, `404`
+when it belongs to another directory, and `401` when `ATELIER_API_TOKEN` is set
+(the page then asks for the token once). Flow Atelier 0.7.0 and earlier have
+no run page.
 
 `POST /tasks/run` takes `{name, description, task, tool, run_path}` and runs it
 as a throwaway one-task conduit - useful for trying a single step without writing
@@ -62,7 +85,10 @@ equivalent to a shell on that machine.**
 `atelier serve` binds `127.0.0.1:8000` and needs no token. Two guards stop a web
 page you happen to visit from driving it:
 
-- **Origin.** CORS is restricted to localhost origins, never `*`.
+- **Origin.** CORS is restricted to localhost origins, never `*`. CORS does not
+  cover WebSockets, so both sockets also check `Origin` themselves: a script
+  with no `Origin` passes, a browser page must be local, a `--cors-origin`, or
+  the server's own UI.
 - **Host.** Only `localhost`, `127.0.0.1` and `::1` are accepted as the `Host`
   header. This is what stops DNS rebinding, where an attacker's page resolves its
   own hostname to `127.0.0.1` so the browser treats the request as same-origin

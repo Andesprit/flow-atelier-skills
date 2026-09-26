@@ -42,8 +42,19 @@ atelier stop <flow_id>                      # gracefully halt a running flow
 | `--resume` | flow id, prefix matching supported. `conduit_name` is not needed |
 | `--again` | flow id, prefix ok; starts a new flow with the saved inputs |
 
-A run prints a per-task panel as each task finishes, then a summary line and the
-new flow id:
+As soon as the flow starts, a run prints its id and the address of its live page
+(`--resume` prints the page too):
+
+```
+· starting flow 20260727_0eb21391_loopdemo
+· run page http://127.0.0.1:8000/runs/20260727_0eb21391_loopdemo
+```
+
+The page loads only while `atelier serve` runs from the same directory; see
+`serve-and-api.md`. `atelier ask` prints the same line.
+
+Then it prints a per-task panel as each task finishes, a summary line and the
+flow id again:
 
 ```
 tick [tool:bash] (10/10)  exit=0 - 0.004s
@@ -161,3 +172,4 @@ All prefixed `ATELIER_`, readable from a `.env` file in the working directory.
 | `ATELIER_CURSOR_LAUNCH_CMD` | registry | JSON argv override |
 | `ATELIER_DONE_MARKER` | `[ATELIER_DONE]` | token that ends an `interactive: true` conversation |
 | `ATELIER_API_TOKEN` | empty | bearer token for the HTTP/WS API |
+| `ATELIER_SERVE_URL` | `http://127.0.0.1:8000` | base of the `run page` link a run prints |

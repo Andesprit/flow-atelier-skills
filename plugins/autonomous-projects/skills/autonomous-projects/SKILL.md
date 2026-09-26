@@ -106,6 +106,22 @@ atelier run autonomous-projects --input project_root=/abs/path/to/your/repo \
 Naming a count overrides its default; unnamed ones keep theirs. Set any to `0`
 to skip that activity.
 
+**Show the run page.** When the tick starts it prints
+`· run page http://127.0.0.1:8000/runs/<flow_id>`: a live map of the tick's
+activities with each agent's log, much like an artifact. Give the user that link
+as soon as the flow starts and again in your report. The page loads only while
+`atelier serve` runs from the directory you ran `atelier run` in (flows live
+there, not under `project_root`). Check it with
+`curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows/<flow_id>`:
+`200` is ready; `401` means `ATELIER_API_TOKEN` is set and the page asks for it
+once. Otherwise start a server from that directory with
+`nohup atelier serve > .atelier/serve.log 2>&1 &` (add `--port <free port>` and
+change the link if 8000 answers `404`, which means it serves another directory).
+Tell the user you started it, that it keeps running until they stop it, and that
+it also fires the schedules in `~/.atelier/schedules/`. No `run page` line means
+the installed atelier (0.7.0 or earlier) has no page; say so instead of sending a
+dead link.
+
 **A bare run is not cheap.** The proposal counts default to 10 / 3 / 5, which is
 18 AI activities, and the divergent ones are about 10 agent calls apiece. Expect
 a long, quota-hungry tick. Only the queue counts (`n_improve`, `n_todo`) default

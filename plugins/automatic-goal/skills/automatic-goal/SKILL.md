@@ -85,8 +85,23 @@ a 7200-second outer cap per pass. The parent allows 500 passes including pauses.
 Check installed YAML before promising exact stopping times.
 
 For unattended execution, use a supported persistent job mechanism. Record the worktree,
-branch, flow ID, job/PID, output log, start time and deadline. Verify the process and
-initial flow progress before saying it is running. Create schedules only when requested.
+branch, flow ID, run page link, job/PID, output log, start time and deadline. Verify the
+process and initial flow progress before saying it is running. Create schedules only when
+requested.
+
+**Run page.** When the flow starts, its log shows
+`· run page http://127.0.0.1:8000/runs/<flow_id>`: a live map of the stages with each
+agent's log, much like an artifact. Give the user that link as soon as the run is
+verified, and again in every status update and report. The page loads only while
+`atelier serve` runs from the goal worktree. Check it with
+`curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows/<flow_id>`:
+`200` is ready; `401` means `ATELIER_API_TOKEN` is set and the page asks for it once.
+Otherwise start a server from the worktree with `nohup atelier serve > .atelier/serve.log 2>&1 &`
+(add `--port <free port>` and change the link if 8000 answers `404`, which means it
+serves another directory). Tell the user you started it, that it keeps running until
+they stop it, and that it also fires the schedules in `~/.atelier/schedules/`. No
+`run page` line means the installed atelier (0.7.0 or earlier) has no page; say so
+instead of sending a dead link.
 
 ## Outcome workflow
 

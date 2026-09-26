@@ -38,7 +38,7 @@ not supported. Windows uses `irm .../install.ps1 | iex`. With Python 3.13+ and u
 ```bash
 atelier init                          # writes .atelier/conduits/hello/
 atelier run hello --input name=world
-atelier serve                         # visual editor on :8000
+atelier serve                         # visual editor and run pages on :8000
 ```
 
 ## Anatomy of a conduit
@@ -154,6 +154,55 @@ server       serve
 Fastest loop when authoring: `atelier check` (validates, runs nothing) then
 `atelier plan <name>` (renders the DAG as waves, marks gates and sinks, runs
 nothing), then `atelier run`.
+
+## Show the user the run page
+
+Every flow has a live page, much like an artifact: a map of its tasks with the
+running ones framed, and the log of any task the user clicks, updated as the
+run goes. Whenever you start a flow (`atelier run`, `--resume`, `--again`,
+`atelier ask`, a package conduit), give the user its link as soon as the flow
+starts, and again in your final report.
+
+1. **Have a server for this directory.** The page is served by `atelier serve`,
+   which only sees flows under the `.atelier/` of the directory it started in.
+   Before the run, from the directory you will run `atelier` in:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows
+   # 000 = no server: start one, in the background so it outlives your command
+   nohup atelier serve > .atelier/serve.log 2>&1 &
+   ```
+
+   Tell the user you started it, that it keeps running until they stop it, and
+   that it also fires the schedules in `~/.atelier/schedules/`. Keep the default
+   loopback host; never bind `0.0.0.0` for this.
+
+2. **Read the link.** Right after `starting flow <id>` (or `resuming flow <id>`)
+   the run prints:
+
+   ```
+   · run page http://127.0.0.1:8000/runs/20260925_0eb21391_hello
+   ```
+
+   A foreground command only returns when the flow ends, so to share the link
+   while the run is going, start the run in the background and read the link
+   from the first lines of its log. Keep a run in the foreground when it has
+   `tool:hitl` gates or `interactive: true` tasks that need the terminal.
+
+3. **Confirm the page loads** before you share it:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows/<flow_id>
+   ```
+
+   `200` is ready. `401` means the server has `ATELIER_API_TOKEN` set; the page
+   asks for the token once. `404` means the server on that port belongs to
+   another directory: start one here with `--port <free port>`, change the port
+   in the link, and set `ATELIER_SERVE_URL=http://127.0.0.1:<port>` for later
+   runs so the printed link matches.
+
+No `run page` line means the installed atelier has no run page (0.7.0 and
+earlier). Say so and suggest an upgrade instead of sending a dead link.
 
 ## Where things live
 

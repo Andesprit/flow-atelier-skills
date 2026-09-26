@@ -59,6 +59,9 @@ role.
      Alt+Enter; when controlling a PTY programmatically, send Escape and Enter
      separately if a combined sequence does not submit.
    - Continue until the flow completes. Do not leave Claude waiting for input.
+   - `atelier ask` prints `· run page <url>` when the flow starts. Give the user
+     that link so they can follow Claude's work live, as the flow-atelier
+     skill's "Show the user the run page" section describes.
 
 5. Recover Claude's final statement from the recorded flow.
    - Capture the `flow_id` printed by `atelier ask`.
