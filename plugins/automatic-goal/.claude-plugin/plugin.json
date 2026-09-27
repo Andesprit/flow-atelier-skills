@@ -1,7 +1,7 @@
 {
   "name": "automatic-goal",
   "description": "Pursue time-bounded user outcomes with Codex supervision and review, Claude implementation and repair, and evidence-backed session reports.",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "author": {
     "name": "Andesprit"
   },
