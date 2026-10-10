@@ -170,12 +170,15 @@ starts, and again in your final report.
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows
    # 000 = no server: start one, in the background so it outlives your command
-   nohup atelier serve > .atelier/serve.log 2>&1 &
+   nohup atelier serve --idle-exit 30 > .atelier/serve.log 2>&1 &
    ```
 
-   Tell the user you started it, that it keeps running until they stop it, and
-   that it also fires the schedules in `~/.atelier/schedules/`. Keep the default
-   loopback host; never bind `0.0.0.0` for this.
+   `--idle-exit 30` makes it stop by itself 30 minutes after the run ends and
+   the page is closed. If the installed atelier rejects the flag (older than
+   the release that added it), start it without the flag and tell the user it
+   keeps running until they stop it. Tell the user you started it and that,
+   while up, it also fires the schedules in `~/.atelier/schedules/`. Keep the
+   default loopback host; never bind `0.0.0.0` for this.
 
 2. **Read the link.** Right after `starting flow <id>` (or `resuming flow <id>`)
    the run prints:

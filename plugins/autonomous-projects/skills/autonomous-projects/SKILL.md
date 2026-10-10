@@ -115,10 +115,13 @@ there, not under `project_root`). Check it with
 `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows/<flow_id>`:
 `200` is ready; `401` means `ATELIER_API_TOKEN` is set and the page asks for it
 once. Otherwise start a server from that directory with
-`nohup atelier serve > .atelier/serve.log 2>&1 &` (add `--port <free port>` and
-change the link if 8000 answers `404`, which means it serves another directory).
-Tell the user you started it, that it keeps running until they stop it, and that
-it also fires the schedules in `~/.atelier/schedules/`. No `run page` line means
+`nohup atelier serve --idle-exit 30 > .atelier/serve.log 2>&1 &` (add
+`--port <free port>` and change the link if 8000 answers `404`, which means it
+serves another directory). It stops by itself 30 minutes after the tick ends and
+the page is closed; if the installed atelier rejects `--idle-exit`, drop the flag
+and tell the user it keeps running until they stop it. Tell the user you started
+it and that, while up, it also fires the schedules in `~/.atelier/schedules/`. No
+`run page` line means
 the installed atelier (0.7.0 or earlier) has no page; say so instead of sending a
 dead link.
 

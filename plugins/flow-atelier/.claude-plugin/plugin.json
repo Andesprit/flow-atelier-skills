@@ -1,7 +1,7 @@
 {
   "name": "flow-atelier",
   "description": "General Flow Atelier operation: conduits, schedules, harnesses, and Claude consultations.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "Andesprit"
   },

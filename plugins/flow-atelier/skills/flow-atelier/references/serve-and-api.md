@@ -2,7 +2,7 @@
 
 ```bash
 atelier serve [--host 127.0.0.1] [--port 8000] [--reload-interval 30.0] \
-              [--cors-origin URL]... [--log-level INFO]
+              [--cors-origin URL]... [--log-level INFO] [--idle-exit MINUTES]
 ```
 
 One process hosting both the HTTP/WebSocket API and the scheduler daemon. It is
@@ -11,6 +11,9 @@ a conduit out by dependency depth, runs stream to a dashboard including HITL
 gates, and every flow gets a live run page (see below).
 
 `--port 0` picks an ephemeral port. `--cors-origin` is repeatable.
+`--idle-exit MINUTES` stops the server after that long with no open page, no
+request, no running flow in its directory and no scheduled run in progress;
+without it the server runs until stopped.
 
 ## Endpoints
 

@@ -145,7 +145,7 @@ process.
 
 ```bash
 atelier serve [--host 127.0.0.1] [--port 8000] [--reload-interval 30.0] \
-              [--cors-origin URL]... [--log-level INFO]
+              [--cors-origin URL]... [--log-level INFO] [--idle-exit MINUTES]
 ```
 
 `--port 0` picks an ephemeral port. `--cors-origin` is repeatable. See
