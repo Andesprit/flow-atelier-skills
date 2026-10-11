@@ -9,24 +9,29 @@ Source: https://github.com/Andesprit/automatic-goal
 
 This skill teaches operation. Install the executable `goal_loop` and `goal_iteration`
 conduits separately with `atelier add`. Codex owns observation, priorities, review and
-final demonstration; Claude Code implements and repairs.
+final demonstration; Claude Code implements and repairs. Codex keeps one
+conversation for the whole run; Claude keeps one per milestone, from build to verdict.
 
 ## Prepare a project
 
 Resolve the target repository, goal, duration and usage floors from the request and
 existing context. Ask for a missing goal or duration rather than inventing an overnight
-run. Installation or inspection alone does not authorize starting agents.
+run. Installation or inspection alone does not authorize starting agents. A clock time
+such as "until 6 am" becomes `hours`: compute the hours from now to its next local occurrence
+with a command instead of estimating, and tell the user the resulting deadline.
 
 Inspect `git status` and `git worktree list`. Runs require a clean, dedicated linked
 worktree on its own branch and a normal main checkout with a `.git` directory.
 The main checkout, detached HEAD, submodules and tracked `.atelier/` files are refused.
 Preserve unrelated work; allow only one loop per worktree at a time.
 
-Check `atelier --version`, `atelier harness check claude-code`, and
-`atelier harness check codex`. Both agents use their existing login. Git, Bash and
-Python 3.11+ available as `python3` are required; reports also need PyYAML. On Windows
-run from Git Bash; without Developer Mode the links to shared history are created as
-directory junctions.
+Check `atelier --version` (0.12.0 or newer), `atelier harness check claude-code`, and
+`atelier harness check codex`. Before an unattended run also refresh the agents with
+`atelier harness sync`: the check sends no prompt, so a stale adapter that cannot use the
+agent's current model passes it and then fails at the first stage. Both agents use their
+existing login. Git, Bash and Python 3.11+ available as `python3` are required; reports also
+need PyYAML. On Windows run from Git Bash; without Developer Mode the links to shared history
+are created as directory junctions.
 
 Adapt these paths and branch names to the task and actual repository state:
 
