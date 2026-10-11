@@ -8,9 +8,10 @@ description: Install, run, inspect, and troubleshoot the automatic-goal Flow Ate
 Source: https://github.com/Andesprit/automatic-goal
 
 This skill teaches operation. Install the executable `goal_loop` and `goal_iteration`
-conduits separately with `atelier add`. Codex owns observation, priorities, review and
-final demonstration; Claude Code implements and repairs. Codex keeps one
-conversation for the whole run; Claude keeps one per milestone, from build to verdict.
+conduits separately with `atelier add`. The director (Codex by default) owns observation,
+priorities, review and final demonstration; the worker (Claude Code by default) implements
+and repairs. The director keeps one conversation for the whole run; the worker keeps one per
+milestone, from build to verdict.
 
 ## Prepare a project
 
@@ -62,6 +63,21 @@ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 atelier run goal_loop \
 Pass the goal as one safely quoted argument. Numeric inputs must be trusted numeric
 values: the conduit interpolates them into shell before validation. The environment
 variable keeps Claude's implementation and checks in the foreground until the turn ends.
+
+When the user names who directs, who builds, or which model, pass it with `--agent` and
+never edit the installed conduits. Give the three director steps the same agent so they
+share one conversation:
+
+```bash
+--agent iterate.supervise=<director> --agent iterate.review=<director> \
+--agent iterate.finalize=<director> --agent iterate.implement=<worker>
+```
+
+Each value is `<agent>`, `<agent>:<model>` or `<agent>:<model>:<effort>`, for example
+`claude-code:opus:xhigh` or `codex:gpt-5.6-sol:high`. Take the names from
+`atelier harness check <agent>`; they change between agent versions. Before starting, run
+`atelier check goal_loop --recursive --probe` with the same flags and continue only when
+every choice is reported usable. `--resume` keeps the choice.
 
 | Input | Default | Meaning |
 |---|---|---|
