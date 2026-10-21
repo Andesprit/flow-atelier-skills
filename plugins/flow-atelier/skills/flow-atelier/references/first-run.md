@@ -71,6 +71,9 @@ the launcher was found, not that you are logged in. See
 - [conduit.yaml reference](conduit-yaml.md) to write your own.
 - Optional: [recovery exercise](recovery-exercise.md) - make a harmless shell
   flow fail on purpose, diagnose it, fix it and resume the same run.
+- Optional: [choose an agent for one run](harnesses.md#choosing-an-agent-for-one-run)
+  without editing the workflow, or [give tasks separate checkouts](task-worktrees.md)
+  and find their results.
 
 ## When a step fails
 
