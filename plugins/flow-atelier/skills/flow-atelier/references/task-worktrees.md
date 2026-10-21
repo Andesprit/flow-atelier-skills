@@ -107,7 +107,10 @@ does not delete them. When you no longer need one, remove it with
 | `is not inside a Git repository` | No repository at or above the directory | Run from a Git project, or drop `--worktree` |
 | `runs '...', which has no working directory of its own` | The task is not a bash or agent task | Leave that task shared |
 
-No task runs and no checkout is made when you see one of these.
+| `Git could not create a checkout for task 'X'` or `'...' already exists, so task 'X' was not given a checkout` | Setup failed part-way, after some checkouts were made | No task ran. The message lists `The checkouts already created are kept, not deleted: <task> -> <path>`; read anything you need there, remove them yourself with `git worktree remove '<path>'`, fix the cause and run again |
+
+For every row except the last, no task runs and no checkout is made. In the last
+row no task runs either, but the checkouts made before the failure stay on disk.
 
 **Resume and again** behave differently with checkouts:
 
