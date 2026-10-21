@@ -71,6 +71,7 @@ atelier run <conduit> [--input key=value]...
 atelier run <conduit> --hide-steps          # default is --show-steps
 atelier run --resume <flow_id>              # pick up a failed or crashed run
 atelier run --again <flow_id>               # fresh run reusing a past flow's inputs
+atelier run <conduit> --agent review=codex  # another agent for one task, this run only
 atelier stop <flow_id>                      # gracefully halt a running flow
 atelier wait <flow_id> [--timeout SECONDS]   # watch an already-started run
 ```
@@ -81,6 +82,7 @@ atelier wait <flow_id> [--timeout SECONDS]   # watch an already-started run
 | `--show-steps` / `--hide-steps` | stream intermediate agent thinking and tool activity live (default: show) |
 | `--resume` | flow id, prefix matching supported. `conduit_name` is not needed |
 | `--again` | flow id, prefix ok; starts a new flow with the saved inputs |
+| `--agent` | `TASK=HARNESS`, repeatable; top-level `harness:` tasks only, the file is unchanged, saved for `--again`/`--resume`. See [Choosing an agent for one run](harnesses.md#choosing-an-agent-for-one-run) |
 
 As soon as the flow starts, a run prints its id and the address of its live page
 (`--resume` prints the page too):

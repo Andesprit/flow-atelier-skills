@@ -68,6 +68,110 @@ Failures exit non-zero and include the tail of the agent's own stderr, which is
 where a failing agent explains itself. Run this before debugging a conduit - a
 harness task that fails for auth reasons looks like a conduit problem and is not.
 
+## Choosing an agent for one run
+
+Use this when a workflow names an agent you cannot or do not want to use today.
+`--agent TASK=HARNESS` picks another agent for one run. The conduit file is not
+changed. This example recipe has two agent tasks:
+
+Save `.atelier/conduits/review_pair/conduit.yaml`:
+
+```yaml
+name: review_pair
+description: draft with one agent, review with another
+inputs:
+  topic:
+    description: what to write about
+tasks:
+  - prepare:
+      description: prepare the topic
+      task: 'echo "topic={{inputs.topic}}"'
+      tool: tool:bash
+  - draft:
+      description: first draft
+      task: "Write one line about {{inputs.topic}}"
+      tool: harness:claude-code
+      depends_on: [prepare]
+  - review:
+      description: check the draft
+      task: "Review this line: {{draft.output}}"
+      tool: harness:claude-code
+      depends_on: [draft]
+```
+
+1. **Find the task names.** `atelier show review_pair` prints the definition.
+   Only top-level `harness:` tasks can take `--agent`: here `draft` and
+   `review`, not `prepare`.
+2. **Find an agent name.** `atelier list harnesses --ready` shows agents whose
+   command is on PATH. `atelier harness check <name>` starts the agent but
+   sends no prompt (see [Checking one](#checking-one-before-you-use-it)).
+   Neither proves that your login, model or quota will do real work.
+3. **Run it.** This starts real agent work, billed by that agent's provider:
+
+   ```bash
+   atelier run review_pair --input topic=tea --agent review=codex
+   ```
+
+   Repeat the option for more tasks: `--agent draft=gemini --agent review=codex`.
+   The value is `<name>`, `<name>:<model>` or `<name>:<model>:<effort>`, with or
+   without `harness:`. Tasks you do not name keep the recipe's agent.
+4. **See what the run used.** Copy the printed `flow_id`, then run
+   `atelier status <flow_id>`. Its `agent` column shows each chosen agent and
+   marks the rest `(recipe)`. When a run saved no choice, the column is absent.
+
+If `atelier run --help` does not mention `--agent` (or the run says
+`No such option: --agent`), your build does not have it. Upgrade (see
+[Upgrade Atelier](cli.md#upgrade-atelier)) or edit the `tool:` line instead.
+
+### Run again or resume with a choice
+
+The choices are saved with the run.
+
+- **`atelier run --again <flow_id>`** starts a new flow and runs every task
+  again. It reuses the saved choices. `--agent` on the same command replaces the
+  choice for the tasks it names.
+- **`atelier run --resume <flow_id>`** continues a failed or crashed flow (a
+  completed flow cannot resume). Completed tasks keep their output and the agent
+  that produced it. The rest run with the saved choices, or the recipe's agent
+  where none was saved. Without `--agent`, a looping task that stopped part way
+  continues on the agent it started with.
+- **`--resume <flow_id> --agent TASK=HARNESS`** may name only a task that is
+  `pending` or `failed`. A completed, running, skipped or cancelled task is
+  refused. A looping task (`repeat`) that already saved a successful iteration
+  is refused too, even while it is failed and even if you name the same agent:
+  its loop history belongs to the first agent. Use `--again` to redo it.
+- **The recipe changed.** Saved choices are checked against the file as it is
+  now. If a chosen task was renamed or is no longer an agent task, `--again`
+  and `--resume` refuse with *the recipe changed since that run*. Another
+  `--agent` does not get past this; start a fresh `atelier run <conduit>`.
+
+A resume reads the current file and is at-least-once: a task can run again and
+repeat side effects or cost. See
+[what resume does not promise](recovery-exercise.md#what-this-shows-and-what-it-does-not).
+
+Inside a called conduit, `call.task=HARNESS` selects a task of a statically
+named child (`task: child_name`). A child chosen by template (`{{...}}`) is
+refused.
+
+### When `--agent` is refused
+
+Each refusal happens before any task starts, and leaves the files and saved
+runs as they were.
+
+| Message contains | Cause | Fix |
+|---|---|---|
+| `has no task 'reveiw' — did you mean 'review'?` | no top-level task with that name | use a name from the listed `valid agent selectors` |
+| `runs 'tool:bash', which is not an agent` | the task is a shell, human or conduit step | only `harness:` tasks take `--agent` |
+| `is not an agent — --agent re-points harness tasks only` | the value was `tool:...` | give an agent name; edit the YAML to change a tool |
+| `expected TASK=HARNESS` | no `=` or an empty side | `--agent review=codex` |
+| `names task 'draft' twice` | the same task given two agents | one `--agent` per task |
+| `is not a harness name` | bad name, or more parts than `<name>:<model>:<effort>` | `<name>[:<model>[:<effort>]]`, lowercase |
+| `names unknown agent` | not in the registry or `ATELIER_HARNESSES` | `atelier list harnesses` |
+| `cannot run: task 'draft' [...] not found on PATH` | the agent's command is not installed | install it, or choose another agent |
+| `only a pending or failed task can be given another agent` | resume named a task that already finished | `atelier run --again <flow_id> --agent ...` |
+| `already recorded iteration` | resume named a loop that has saved iterations | `atelier run --again <flow_id> --agent ...` |
+| `can only resume failed or crashed flows` | the flow completed | `--again` |
+
 ## Registering an agent the registry does not list
 
 Something private, a fork, a local build:

@@ -130,6 +130,10 @@ skips a task, it does not fail it** - and everything downstream skips too.
 `tool:*` is a closed set. `harness:*` is open - any ACP agent in the registry,
 plus anything you register yourself.
 
+To run a workflow with a different agent without editing it, use
+`atelier run <conduit> --agent <task>=<agent>`. See `references/harnesses.md`
+*Choosing an agent for one run*.
+
 ### Templating
 
 | Expression | Resolves to |
@@ -275,7 +279,7 @@ always project-local, written under the directory you ran `atelier` from.
 - `references/cli.md` - every command with its flags and behavior.
 - `references/inspection.md` - optional one-command, read-only report on an existing workflow.
 - `references/harnesses.md` - the ACP registry, listing and checking agents,
-  custom agents, interactive mode, env overrides.
+  choosing an agent for one run, custom agents, interactive mode, env overrides.
 - `references/scheduling.md` - schedule file schema, all three modes, the daemon.
 - `references/schedule-recovery.md` - a scheduled run did not happen: what to read next.
 - `references/packages.md` - sharing conduits, `atelier-package.yaml`, install
