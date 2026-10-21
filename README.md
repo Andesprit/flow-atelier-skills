@@ -1,29 +1,59 @@
 # Flow Atelier plugin marketplace
 
-Three independently installable Claude Code plugins for Flow Atelier.
+Three independently installable Claude Code plugins for Flow Atelier. They give an
+agent instructions. They do not install the Atelier CLI, log in agents, install
+executable conduits, or start runs.
 
-| Plugin | Included skills | Purpose |
-|---|---|---|
-| `flow-atelier` | `flow-atelier`, `claude-via-atelier` | Understand Atelier; author, run and debug conduits; configure schedules, harnesses and packages; consult Claude through Atelier |
-| `autonomous-projects` | `autonomous-projects` | Operate the autonomous-projects conduit, project board, proposal counts and approved-task workflow |
-| `automatic-goal` | `automatic-goal`, `goal-report`, `goal-monitor` | Pursue user outcomes with Codex supervision and review, Claude implementation and repair, and evidence-backed session reports |
+## Pick your job
 
-These plugins provide agent instructions. They do not install the Atelier CLI,
-authenticate agents, install executable conduits, or start runs.
+Install only the plugin your job needs. Each skill link has the detailed setup.
+
+| Job | Plugin and skill | Needs | Try this first | You should see |
+|---|---|---|---|---|
+| Write and run workflows | `flow-atelier`: [flow-atelier](plugins/flow-atelier/skills/flow-atelier/SKILL.md) | plugin, `atelier` CLI. An agent only for agent steps. | In a terminal, follow [first run](plugins/flow-atelier/skills/flow-atelier/references/first-run.md). In Claude: "Write a conduit that runs my tests and stops when they pass." | `hello world` from a shell-only flow; no agent runs. |
+| Ask Claude from Codex | `flow-atelier`: [claude-via-atelier](plugins/flow-atelier/skills/claude-via-atelier/SKILL.md) | the skill in Codex (see [other agents](#install-skills-in-other-agents)), `atelier` CLI, a Claude Code login | In a terminal: `atelier harness check claude-code`. Then in Codex: "Ask Claude to review src/ and report problems." | Claude's answer plus Codex's own check. The request is a real Claude run and spends its quota. |
+| Let an agent work through an approved task board | `autonomous-projects`: [autonomous-projects](plugins/autonomous-projects/skills/autonomous-projects/SKILL.md) | plugin, CLI, the autonomous-projects package, the separate `agent-skills` plugin, a Claude Code login | In Claude: "Set up autonomous-projects for this repo, but do not run a tick." | Each [setup step](plugins/autonomous-projects/skills/autonomous-projects/SKILL.md#setup-on-a-new-repo) checked and a board to fill in. A tick is a separate, paid request. |
+| Pursue an outcome for a fixed time | `automatic-goal`: [automatic-goal](plugins/automatic-goal/skills/automatic-goal/SKILL.md), [goal-report](plugins/automatic-goal/skills/goal-report/SKILL.md), [goal-monitor](plugins/automatic-goal/skills/goal-monitor/SKILL.md) | plugin, CLI 0.12.0+, the automatic-goal package, Claude Code and Codex logins, a dedicated Git worktree | In Claude: "Check whether this repo is ready for a 2-hour automatic goal. Do not start it." | The [prerequisite checks](plugins/automatic-goal/skills/automatic-goal/SKILL.md#prepare-a-project) and what is missing. A run starts only when you ask for one and spends both agents' quota. |
 
 ## Install plugins in Claude Code
 
-Register the marketplace once, then install whichever plugins you need:
+Inside a Claude Code session, register the marketplace once, then install the
+plugin for your job:
 
 ```text
 /plugin marketplace add Andesprit/flow-atelier-skills
 /plugin install flow-atelier@flow-atelier-skills
-/plugin install autonomous-projects@flow-atelier-skills
-/plugin install automatic-goal@flow-atelier-skills
 ```
 
+Replace `flow-atelier` with `autonomous-projects` or `automatic-goal` for those jobs.
 Each plugin includes its own skills and references; none requires another plugin.
 The marketplace identifier remains `flow-atelier-skills`.
+
+Check the install from a terminal:
+
+```bash
+claude plugin list                    # the plugin is listed with Status: enabled
+claude plugin details flow-atelier    # its skills and projected token cost
+```
+
+These commands send no prompt. They read the installed plugin, not an open session.
+Start a new Claude Code session after installing, or follow the reload hint that
+`/plugin install` prints, before you ask for the job. A skill can also be called by
+its full name, for example `/flow-atelier:flow-atelier`.
+
+### Something is missing?
+
+| Symptom | Missing layer | Next check or fix |
+|---|---|---|
+| Claude does not use the skill | plugin | `claude plugin list` (installed and enabled?), `claude plugin details <plugin>` (skills listed?), then a new session. |
+| `command not found: atelier` | CLI | Install it: see [first run](plugins/flow-atelier/skills/flow-atelier/references/first-run.md#1-check-the-cli). |
+| `unknown conduit: hello` | project not initialised | `atelier init` in the directory where you run `atelier`. |
+| `unknown conduit: goal_loop` or `autonomous-projects` | package not installed in this project | Follow the job's setup link above, then `atelier list conduits`. |
+| An agent task cannot start or log in | harness | `atelier harness check <name>`. It sends no prompt. `ready yes` in `atelier list harnesses` does not prove a login. |
+| A run failed | conduit or task | `atelier diagnose <flow_id>` first. See [troubleshooting](plugins/flow-atelier/skills/flow-atelier/references/troubleshooting.md#a-run-failed-start-here). |
+
+A successful hello run proves the CLI works. It does not prove an agent login or a
+package install.
 
 ### Migrating from the old bundled plugin
 
@@ -54,16 +84,11 @@ supported by your agent. Keep each skill's references with it.
 
 ## Install the executable workflow packages
 
-Run these separately in the project where you intend to use the conduits:
-
-```bash
-atelier install Andesprit/autonomous-projects --project
-atelier install Andesprit/automatic-goal --project
-```
-
-The automatic-goal skill explains dedicated worktree setup, required environment,
-outcome planning, time and usage reserves, bounded repair and shared decision history. Installing its plugin does
-not authorize or start an autonomous run.
+The board and goal jobs also need an executable package in the project you work on.
+These are optional for the other jobs. Use the exact commands in each skill:
+[autonomous-projects setup](plugins/autonomous-projects/skills/autonomous-projects/SKILL.md#setup-on-a-new-repo)
+and [automatic-goal preparation](plugins/automatic-goal/skills/automatic-goal/SKILL.md#prepare-a-project).
+Installing a plugin or a package does not authorize or start an autonomous run.
 
 ## Repository layout
 
