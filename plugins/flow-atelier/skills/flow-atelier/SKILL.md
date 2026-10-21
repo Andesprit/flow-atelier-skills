@@ -167,6 +167,11 @@ Fastest loop when authoring: `atelier check` (validates, runs nothing) then
 `atelier plan <name>` (renders the DAG as waves, marks gates and sinks, runs
 nothing), then `atelier run`.
 
+To inspect a workflow you did not write before running it, the optional
+`scripts/inspect_workflow.py <project-path> <conduit> [--json]` beside this file
+reports the file a run would use, required inputs, top-level tools and validity
+in one command, without running the workflow or an agent. See `references/inspection.md`.
+
 **A run failed? Start with `atelier diagnose <flow_id>`.** It explains what
 failed and suggests next commands without running tasks. For a failed nested
 run, follow the child diagnosis it prints. See `references/troubleshooting.md`.
@@ -268,6 +273,7 @@ always project-local, written under the directory you ran `atelier` from.
   field and its validation, the condition DSL, loop semantics and truth tables,
   templating, HITL, nested conduits.
 - `references/cli.md` - every command with its flags and behavior.
+- `references/inspection.md` - optional one-command, read-only report on an existing workflow.
 - `references/harnesses.md` - the ACP registry, listing and checking agents,
   custom agents, interactive mode, env overrides.
 - `references/scheduling.md` - schedule file schema, all three modes, the daemon.

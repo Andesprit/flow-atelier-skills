@@ -55,6 +55,10 @@ its full name, for example `/flow-atelier:flow-atelier`.
 A successful hello run proves the CLI works. It does not prove an agent login or a
 package install.
 
+Optional: to see which file, inputs and tools an existing workflow uses before you
+run it, use [inspect an existing workflow](plugins/flow-atelier/skills/flow-atelier/references/inspection.md).
+It runs no workflow and no agent.
+
 ### Migrating from the old bundled plugin
 
 The former `flow-atelier-skills` plugin is replaced by the three entries above.
