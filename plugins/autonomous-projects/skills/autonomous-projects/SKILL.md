@@ -178,6 +178,12 @@ never touched until a run names `n_todo`.
 
 ## Troubleshooting
 
+If the tick fails, run `atelier diagnose <flow_id>` first, from the directory
+you ran the tick in. If it names a failed nested run, follow the child
+`atelier diagnose <child_flow_id>` it prints to see the original exit status.
+The parent report does not include full child history. Follow its suggested
+next commands and fix the cause before resuming or starting another tick.
+
 | Symptom | Cause | Fix |
 |---|---|---|
 | `no project at <path>/.atelier/project/` | `project_root` is wrong, relative, or never scaffolded | Use an absolute path; run `scaffold-project` |

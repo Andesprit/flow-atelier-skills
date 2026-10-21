@@ -108,6 +108,9 @@ not present Claude's words as Codex's independent verification.
 
 ## Failure handling
 
+- If a run fails and has a flow id, run `atelier diagnose <flow_id>` first
+  from its working directory. Follow the suggested next commands; for a failed
+  nested run, follow the child diagnosis it prints for full detail.
 - If `atelier ask` is unavailable, run `atelier --version` and
   `atelier harness check claude-code` to distinguish installation from harness
   authentication problems.

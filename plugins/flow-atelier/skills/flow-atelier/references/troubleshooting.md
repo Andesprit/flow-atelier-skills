@@ -1,6 +1,20 @@
 # Troubleshooting
 
-## Reach for these first
+## A run failed: start here
+
+```bash
+atelier diagnose <flow_id>
+```
+
+This reads the saved run and explains the failed task, its reason, the stderr
+tail and suggested next commands. It runs no tasks. If it names a failed nested
+run, follow the child `atelier diagnose <child_flow_id>` it prints to see the
+original exit status. The parent report does not include full child history.
+
+Use the report's suggested task logs if more detail is needed. Fix the cause
+before resuming; a resume can run agents and modify files again.
+
+## Authoring and follow-up checks
 
 ```bash
 atelier check <conduit>      # schema, deps, loop predicates, template refs
@@ -79,8 +93,8 @@ flow_id: 20260727_09f441fa_exhaust
 -> atelier run --resume 20260727_09f441fa_exhaust
 ```
 
-`--resume` picks up where it stopped. `--again` starts fresh with the same
-inputs. Both take a flow id prefix.
+After diagnosis and any fix, `--resume` picks up where it stopped. `--again`
+starts fresh with the same inputs. Both take a flow id prefix.
 
 Other failure sources:
 
@@ -168,4 +182,5 @@ after: null
 
 For per-iteration detail use `atelier logs <flow_id> -t <task> -s all`. For
 nested runs, `GET /flows/:id/logs` returns the whole descendant tree in one
-response; on the CLI, descend into `flows/<child_flow_id>/` yourself.
+response; on the CLI, use the child ids printed by `atelier diagnose` with
+`atelier diagnose <child_flow_id>` or `atelier logs <child_flow_id>`.

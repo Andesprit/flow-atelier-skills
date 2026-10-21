@@ -158,6 +158,10 @@ Fastest loop when authoring: `atelier check` (validates, runs nothing) then
 `atelier plan <name>` (renders the DAG as waves, marks gates and sinks, runs
 nothing), then `atelier run`.
 
+**A run failed? Start with `atelier diagnose <flow_id>`.** It explains what
+failed and suggests next commands without running tasks. For a failed nested
+run, follow the child diagnosis it prints. See `references/troubleshooting.md`.
+
 ## Show the user the run page
 
 Every flow has a live page, much like an artifact: a map of its tasks with the

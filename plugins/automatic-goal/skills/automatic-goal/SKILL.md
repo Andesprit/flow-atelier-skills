@@ -218,10 +218,15 @@ how it works. Each discarded idea retains the attempted approach and intended be
 plus the evidence and reason for dropping it. Keep technical history secondary;
 `report --details` includes the full records. Never invent missing historical detail.
 
-Inspect before resuming:
+If a run fails, start with `atelier diagnose <flow_id>` from the directory
+holding its flows. If it names a failed nested run, run the child
+`atelier diagnose <child_flow_id>` it prints to see the original exit status;
+the parent report does not include full child history. Follow its suggested
+next commands, then inspect before resuming:
 
 ```bash
 git status
+atelier diagnose <flow_id>
 atelier status <flow_id>
 atelier outputs <flow_id>
 atelier logs <flow_id>

@@ -50,6 +50,11 @@ atelier install owner/repo --no-project   # into ~/.atelier (every project)
 Omit both and you are asked. Global is the usual choice for a package you want to
 run from anywhere; project-local wins on name collision at run time.
 
+Install uses the global package cache (`~/.atelier/cache/`) even with
+`--project`. For an isolated test, set `ATELIER_GLOBAL_ATELIER_DIR` to a temporary
+directory; this relocates the global store and its cache, not the project target.
+The setting is listed in `cli.md`.
+
 ## Collision behavior
 
 An existing conduit of the same name is **skipped, not overwritten**, unless you

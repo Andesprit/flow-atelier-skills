@@ -4,7 +4,16 @@ The symptom table in `SKILL.md` covers the common cases. This file is for when
 that is not enough: how to inspect a board by hand, how to recover a stuck one,
 and how to read what a tick actually reported.
 
-## First: look at the board, not the logs
+## A tick failed: diagnose it first
+
+Run `atelier diagnose <flow_id>` from the directory holding the tick's flows.
+It explains the failure and suggests next commands without starting tasks.
+If it names a failed nested run, follow the child
+`atelier diagnose <child_flow_id>` it prints for the original exit status;
+the parent report does not include full child history. Fix the cause before
+resuming or starting another tick.
+
+## A successful tick did nothing: look at the board
 
 Almost every "it did nothing" report is answered by listing the stage folders.
 
