@@ -20,7 +20,7 @@ mkdir atelier-recovery-lab && cd atelier-recovery-lab && env ATELIER_ATELIER_DIR
 
 It opens a new `bash` shell inside the new directory, with the prompt
 `recovery-lab$ `. Run the rest of the exercise at that prompt, even if your usual
-shell is zsh or fish. `--noprofile --norc` stops your startup files from
+shell is zsh. `--noprofile --norc` stops your startup files from
 changing the lab settings, and the empty `HISTFILE` keeps the lab's commands out
 of your shell history file. On macOS, `bash` may first print a note that the
 default shell is now zsh; you can ignore it. The lab shell has three settings that only it and the
