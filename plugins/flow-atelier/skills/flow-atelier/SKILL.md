@@ -41,6 +41,10 @@ atelier run hello --input name=world
 atelier serve                         # visual editor and run pages on :8000
 ```
 
+For a complete starting point, see [recipes](references/recipes.md): review loops,
+agent handoffs, human approval, test/fix loops, and a nightly schedule. Each has
+copyable YAML, check/run commands, expected results and a first recovery step.
+
 ## Anatomy of a conduit
 
 This one example exercises most of the surface. Every field is optional except
@@ -255,6 +259,7 @@ always project-local, written under the directory you ran `atelier` from.
 
 ## References
 
+- `references/recipes.md` - complete recipes for common jobs, with verification limits.
 - `references/conduit-yaml.md` - complete authoring reference: every schema
   field and its validation, the condition DSL, loop semantics and truth tables,
   templating, HITL, nested conduits.
