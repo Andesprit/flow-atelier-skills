@@ -77,10 +77,15 @@ is your choice; the report prints the `mkdir -p` command that would do it.
 
 The directories follow the CLI settings: `ATELIER_ATELIER_DIR` and
 `ATELIER_GLOBAL_ATELIER_DIR` from the environment, relative to the project path,
-or `<project>/.atelier` and `~/.atelier`. If the project's `.env` sets one of
-those two paths, the script does not guess its value: it reports
-`not_inspectable` and asks you to export the setting or use `atelier check`
-directly. Other `.env` contents are not read out.
+or `<project>/.atelier` and `~/.atelier`. If the project's `.env` mentions one of
+those two names anywhere, even quoted or in a comment, the script does not guess
+its value: it reports `not_inspectable` and asks you to export the setting or use
+`atelier check` directly. Two exported spellings of one name (for example
+upper and lower case) are refused the same way. Other `.env` contents are not
+read out.
 
-If the definition changes, or resolves to a different file, between the `check`
-and `show` calls, the report says `not_inspectable` instead of mixing two files.
+The script fingerprints the project and global copies before the first call. If
+either changes while it is inspected, if `check` selects a file other than the
+expected project or global copy, or if `show` describes a different file or
+conduit name, the report says `not_inspectable` instead of mixing two answers.
+An `atelier` that is found but cannot start is reported the same way.

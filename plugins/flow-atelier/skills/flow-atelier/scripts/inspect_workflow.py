@@ -40,14 +40,18 @@ class NotInspectable(Exception):
 
 def exported_setting(name):
     """Return an exported setting value; pydantic-settings matches names case-insensitively."""
-    for key, value in os.environ.items():
-        if key.upper() == name:
-            return value
-    return None
+    keys = [key for key in os.environ if key.upper() == name]
+    if len(keys) > 1:
+        raise NotInspectable(f"several exported spellings of {name} ({', '.join(keys)}); the one the CLI uses is ambiguous",
+                             f"keep one of them, e.g. unset {keys[1]}")
+    return os.environ[keys[0]] if keys else None
 
 
 def dotenv_sets(project, name):
-    """True when the project's .env assigns `name`; values are never read out."""
+    """True when the project's .env mentions `name` at all; values are never read out.
+
+    ponytail: any mention refuses, even a comment, rather than parse dotenv quoting/export forms.
+    """
     env_file = project / ".env"
     if not env_file.exists():
         return False
@@ -58,13 +62,7 @@ def dotenv_sets(project, name):
             f"cannot read {env_file} ({e.__class__.__name__}); the CLI reads it for settings",
             f"make {env_file} readable, then inspect again",
         )
-    for line in lines:
-        line = line.strip()
-        if line.startswith("export "):
-            line = line[len("export "):].lstrip()
-        if line.split("=", 1)[0].strip().upper() == name and "=" in line:
-            return True
-    return False
+    return any(name in line.upper() for line in lines)
 
 
 def layout(project):
@@ -74,7 +72,7 @@ def layout(project):
         value = exported_setting(name)
         if value is None and dotenv_sets(project, name):
             raise NotInspectable(
-                f"{project / '.env'} sets {name}; this helper does not resolve .env path settings",
+                f"{project / '.env'} mentions {name}; this helper does not resolve .env path settings",
                 f"export {name} explicitly, or use `atelier check` directly",
             )
         # The CLI keeps relative paths relative to its cwd, which is `project`.
@@ -89,16 +87,21 @@ def layout(project):
             "nothing was inspected. To prepare them yourself (this writes directories): mkdir -p "
             + " ".join(shlex.quote(p) for p in missing),
         )
+    return atelier / "conduits", global_dir / "conduits"
 
 
 def atelier_json(atelier, args, project, timeout):
     """Run one allowlisted read-only CLI call; return (exit code, parsed stdout or None, stderr)."""
     env = {**os.environ, "ATELIER_NO_UPDATE_CHECK": "1", "PYTHONDONTWRITEBYTECODE": "1"}
-    proc = subprocess.Popen(
-        [atelier, *args], cwd=project, env=env, stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        start_new_session=True,
-    )
+    try:
+        proc = subprocess.Popen(
+            [atelier, *args], cwd=project, env=env, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8", errors="replace",
+            start_new_session=True,
+        )
+    except OSError as e:
+        raise NotInspectable(f"{atelier} could not be started ({e.__class__.__name__}: {e.strerror or e})",
+                             "check the atelier install: atelier --version")
     try:
         out, err = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -146,10 +149,21 @@ def inspect(project_arg, conduit, timeout):
         atelier = shutil.which("atelier")
         if atelier is None:
             raise NotInspectable("the atelier command is not on PATH", "install the CLI: see references/first-run.md")
-        layout(project)
+        if conduit in ("", ".", "..") or "/" in conduit or os.sep in conduit:
+            raise NotInspectable(f"{conduit!r} is not a conduit name", "pass the name shown by `atelier list conduits`")
+        project_dir, global_dir = layout(project)
         cd = f"cd {shlex.quote(str(project))} && "
+        # Fingerprint both candidate files before the first call, so a definition
+        # that changes at any point during check or show is never reported.
+        candidates = {"project": project_dir / conduit / "conduit.yaml", "global": global_dir / conduit / "conduit.yaml"}
+        before = {src: file_hash(path) for src, path in candidates.items()}
+
+        def unchanged():
+            if {src: file_hash(path) for src, path in candidates.items()} != before:
+                raise NotInspectable("the definition changed while it was being inspected", "inspect again")
 
         code, rows, err = atelier_json(atelier, ["check", "--json", conduit], project, timeout)
+        unchanged()
         if rows is None:
             if code == 1 and "unknown conduit" in err:
                 raise NotInspectable(f"no conduit named {conduit!r} in this project or the global store",
@@ -161,6 +175,9 @@ def inspect(project_arg, conduit, timeout):
                 or not isinstance(row.get("path"), str) or not isinstance(row.get("ok"), bool)):
             raise NotInspectable("`atelier check` returned a report this helper does not understand",
                                  cd + f"atelier check {shlex.quote(conduit)}")
+        if os.path.realpath(row["path"]) != os.path.realpath(candidates[row["source"]]):
+            raise NotInspectable(f"`atelier check` selected {row['path']}, not the expected {row['source']} file "
+                                 f"{candidates[row['source']]}", cd + f"atelier check {shlex.quote(conduit)}")
         report["source"], report["path"] = row["source"], row["path"]
         if row["ok"] != (code == 0):
             raise NotInspectable(f"`atelier check` exit {code} contradicts its ok={row['ok']} report",
@@ -175,15 +192,18 @@ def inspect(project_arg, conduit, timeout):
             raise NotInspectable("`atelier check` did not list required inputs", cd + f"atelier check {shlex.quote(conduit)}")
         report["required_inputs"] = row["required_inputs"]
 
-        before = file_hash(row["path"])
-        code, shown, err = atelier_json(atelier, ["show", "--json", conduit], project, timeout)
         incomplete = "definition passed `atelier check`, but its details could not be read: "
+        if before[row["source"]] is None:
+            raise NotInspectable(incomplete + f"cannot read {row['path']}", cd + f"atelier show {shlex.quote(conduit)}")
+        code, shown, err = atelier_json(atelier, ["show", "--json", conduit], project, timeout)
+        unchanged()
         if code != 0 or not isinstance(shown, dict):
             raise NotInspectable(incomplete + f"`atelier show` exited {code} {err[-300:]}", cd + f"atelier show {shlex.quote(conduit)}")
-        if shown.get("path") != row["path"] or shown.get("source") != row["source"] or file_hash(row["path"]) != before:
-            raise NotInspectable(incomplete + "the definition changed or resolved to another file between check and show",
+        body = shown.get("conduit") if isinstance(shown.get("conduit"), dict) else {}
+        if shown.get("path") != row["path"] or shown.get("source") != row["source"] or body.get("name") != conduit:
+            raise NotInspectable(incomplete + "`atelier show` described a different file or conduit than `atelier check`",
                                  "inspect again")
-        tasks = (shown.get("conduit") or {}).get("tasks") if isinstance(shown.get("conduit"), dict) else None
+        tasks = body.get("tasks")
         if (not isinstance(tasks, list) or not all(isinstance(t, dict) and isinstance(t.get("name"), str)
                                                     and isinstance(t.get("tool"), str) for t in tasks)
                 or not str_list(shown.get("accepted_inputs")) or shown.get("required_inputs") != row["required_inputs"]):

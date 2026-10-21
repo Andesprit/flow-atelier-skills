@@ -31,6 +31,8 @@ if step.get("sleep"):
     open(os.environ["FAKE_LOG"] + ".pid", "w").write(str(child.pid))
     time.sleep(step["sleep"])
 sys.stdout.write(step.get("stdout", ""))
+sys.stdout.flush()
+sys.stdout.buffer.write(bytes.fromhex(step.get("raw_hex", "")))
 sys.stderr.write(step.get("stderr", ""))
 sys.exit(step.get("exit", 0))
 """
@@ -143,7 +145,7 @@ class InspectWorkflowTest(unittest.TestCase):
             "task without tool": {"stdout": show_doc(self.conduit, tasks=[{"name": "greet"}])},
             "tasks not a list": {"stdout": show_doc(self.conduit, tasks="greet")},
             "inputs disagree": {"stdout": show_doc(self.conduit, required=("other",))},
-            "file changed between calls": {"stdout": show_doc(self.conduit), "mutate": str(self.conduit)},
+            "different conduit name": {"stdout": show_doc(self.conduit).replace('"name": "greet", "tasks"', '"name": "other", "tasks"')},
         }
         for label, show in cases.items():
             with self.subTest(label):
@@ -156,6 +158,63 @@ class InspectWorkflowTest(unittest.TestCase):
                 rep = json.loads(r.stdout)
                 self.assertEqual((r.returncode, rep["status"], rep["tools"]), (2, "not_inspectable", None))
                 self.assertIn("passed `atelier check`", rep["error"])
+
+    def test_definition_changing_during_check_or_show_is_never_reported(self):
+        cases = {
+            "during show": ({"stdout": check_row(self.conduit)}, {"stdout": show_doc(self.conduit), "mutate": str(self.conduit)}),
+            "during valid check": ({"stdout": check_row(self.conduit), "mutate": str(self.conduit)}, {"stdout": show_doc(self.conduit)}),
+            "during invalid check": ({"exit": 1, "stdout": check_row(self.conduit, ok=False, error="x"), "mutate": str(self.conduit)}, None),
+        }
+        for label, (check, show) in cases.items():
+            with self.subTest(label):
+                self.fake(check, show)
+                self.conduit.write_text("name: greet\n")
+                environ = {"PATH": f"{self.bin}:/usr/bin:/bin", "HOME": str(self.home),
+                           "FAKE_SCENARIO": str(self.scenario), "FAKE_LOG": str(self.log)}
+                r = subprocess.run([sys.executable, str(SCRIPT), str(self.project), "greet", "--json"],
+                                   env=environ, capture_output=True, text=True, timeout=60)
+                rep = json.loads(r.stdout)
+                self.assertEqual((r.returncode, rep["status"]), (2, "not_inspectable"))
+                self.assertIn("changed while it was being inspected", rep["error"])
+
+    def test_check_selecting_an_unexpected_or_unreadable_file_is_not_inspectable(self):
+        self.fake({"stdout": check_row(self.tmp / "elsewhere/conduit.yaml")})
+        code, rep = self.inspect_json()
+        self.assertEqual((code, rep["status"]), (2, "not_inspectable"))
+        self.assertIn("not the expected project file", rep["error"])
+        global_copy = self.home / ".atelier/conduits/greet/conduit.yaml"
+        self.fake({"stdout": check_row(global_copy, source="global")})  # project copy exists, so global is wrong
+        self.assertEqual(self.inspect_json()[0], 2)
+        self.fake({"stdout": check_row(self.conduit)}, {"stdout": show_doc(self.conduit)})
+        self.conduit.chmod(0)
+        try:
+            code, rep = self.inspect_json()
+        finally:
+            self.conduit.chmod(0o644)
+        self.assertEqual(code, 2)
+        self.assertIn("cannot read", rep["error"])
+
+    def test_unlaunchable_cli_and_undecodable_output_give_a_report_not_a_traceback(self):
+        fake = self.bin / "atelier"
+        for label, body in {"missing interpreter": b"#!/nonexistent/python3\n", "exec format": b"\x00\x01garbage"}.items():
+            with self.subTest(label):
+                fake.write_bytes(body)
+                fake.chmod(0o755)
+                for extra in ([], ["--json"]):
+                    r = self.run_cli(str(self.project), "greet", *extra)
+                    self.assertEqual(r.returncode, 2)
+                    self.assertNotIn("Traceback", r.stdout + r.stderr)
+                    self.assertIn("could not be started", r.stdout)
+        self.fake({"raw_hex": "5bff fe00"})
+        code, rep = self.inspect_json()
+        self.assertEqual((code, rep["status"]), (2, "not_inspectable"))
+        self.assertIn("not JSON", rep["error"])
+
+    def test_unsafe_conduit_name_never_calls_atelier(self):
+        self.fake()
+        r = self.run_cli(str(self.project), "../greet", "--json")
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(self.calls(), [])
 
     def test_unknown_conduit_and_unsupported_cli(self):
         self.fake({"exit": 1, "stderr": "unknown conduit: greet — try 'atelier list conduits'"})
@@ -202,11 +261,13 @@ class InspectWorkflowTest(unittest.TestCase):
 
     def test_exported_dir_overrides_use_cli_relative_semantics(self):
         custom = self.project / "custom"
-        for d in ("conduits", "flows", "schedules"):
+        for d in ("conduits/greet", "flows", "schedules"):
             (custom / d).mkdir(parents=True)
         shared = self.tmp / "shared"
         (shared / "conduits").mkdir(parents=True)
-        self.fake({"stdout": check_row(self.conduit)}, {"stdout": show_doc(self.conduit)})
+        selected = custom / "conduits/greet/conduit.yaml"
+        selected.write_text("name: greet\n")
+        self.fake({"stdout": check_row(selected)}, {"stdout": show_doc(selected)})
         (self.project / ".atelier/flows").rmdir()  # the default layout is no longer needed
         (self.home / ".atelier/conduits").rmdir()
         env = {"ATELIER_ATELIER_DIR": "custom", "ATELIER_GLOBAL_ATELIER_DIR": str(shared)}
@@ -214,6 +275,9 @@ class InspectWorkflowTest(unittest.TestCase):
         code, rep = self.inspect_json(env={**env, "ATELIER_ATELIER_DIR": "elsewhere"})
         self.assertEqual(code, 2)
         self.assertIn(str(self.project / "elsewhere/conduits"), rep["error"])
+        code, rep = self.inspect_json(env={**env, "atelier_atelier_dir": "custom"})
+        self.assertEqual(code, 2)
+        self.assertIn("ambiguous", rep["error"])
 
     def test_dotenv_path_settings_are_refused_but_harmless_dotenv_is_fine(self):
         self.fake({"stdout": check_row(self.conduit)}, {"stdout": show_doc(self.conduit)})
@@ -226,6 +290,16 @@ class InspectWorkflowTest(unittest.TestCase):
         self.assertIn("ATELIER_GLOBAL_ATELIER_DIR", rep["error"])
         self.assertNotIn("do-not-print", json.dumps(rep))
         self.assertEqual(self.inspect_json(env={"ATELIER_GLOBAL_ATELIER_DIR": str(self.home / ".atelier")})[0], 0)
+        for line in ("'ATELIER_ATELIER_DIR'=redirected", '"ATELIER_ATELIER_DIR" = "redirected"',
+                     "export\tATELIER_ATELIER_DIR=redirected", "  Atelier_Global_Atelier_Dir=x"):
+            with self.subTest(line):
+                dotenv.write_text(f"API_TOKEN=do-not-print\n{line}\n")
+                self.log.unlink(missing_ok=True)
+                code, rep = self.inspect_json()
+                self.assertEqual((code, rep["status"]), (2, "not_inspectable"))
+                self.assertEqual(self.calls(), [])
+                self.assertFalse((self.project / "redirected").exists())
+                self.assertNotIn("do-not-print", json.dumps(rep))
         dotenv.chmod(0)
         try:
             code, rep = self.inspect_json()
