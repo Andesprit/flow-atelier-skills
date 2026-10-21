@@ -225,14 +225,17 @@ the parent report does not include full child history. Follow its suggested
 next commands, then inspect before resuming:
 
 ```bash
-git status
 atelier diagnose <flow_id>
+git status
 atelier status <flow_id>
 atelier outputs <flow_id>
 atelier logs <flow_id>
 cat .atelier/goal/handoff.md
 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 atelier run --resume <flow_id>
 ```
+
+For a setup refusal, match its message to the cause and fix in
+[references/troubleshooting.md](references/troubleshooting.md). It also explains usage pauses.
 
 Resume preserves the original deadline and checkpoint. A terminal BLOCKED or
 OPERATIONAL_FAILURE run needs inspection and an explicit decision about preserved changes
