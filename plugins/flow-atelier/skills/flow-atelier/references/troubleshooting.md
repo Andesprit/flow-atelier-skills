@@ -94,7 +94,9 @@ flow_id: 20260727_09f441fa_exhaust
 ```
 
 After diagnosis and any fix, `--resume` picks up where it stopped. `--again`
-starts fresh with the same inputs. Both take a flow id prefix.
+starts fresh with the same inputs. Both take a flow id prefix. To practise this
+on a harmless shell-only flow first, see the
+[recovery exercise](recovery-exercise.md).
 
 Other failure sources:
 

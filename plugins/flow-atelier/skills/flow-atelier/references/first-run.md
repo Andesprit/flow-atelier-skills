@@ -69,6 +69,8 @@ the launcher was found, not that you are logged in. See
   shell step, test-and-fix loops and a nightly schedule. Recipes with agent steps
   spend that agent's quota when you run them; preview first with `atelier plan`.
 - [conduit.yaml reference](conduit-yaml.md) to write your own.
+- Optional: [recovery exercise](recovery-exercise.md) - make a harmless shell
+  flow fail on purpose, diagnose it, fix it and resume the same run.
 
 ## When a step fails
 

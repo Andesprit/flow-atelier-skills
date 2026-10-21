@@ -283,3 +283,4 @@ always project-local, written under the directory you ran `atelier` from.
 - `references/serve-and-api.md` - the HTTP/WS server, endpoints, and the
   security model.
 - `references/troubleshooting.md` - failure modes, debugging a flow, recovery.
+- `references/recovery-exercise.md` - optional hands-on practice: fail, diagnose, fix, resume.
