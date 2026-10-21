@@ -141,14 +141,16 @@ or incomplete task **skips** the referencing task.
 Commands for atelier 0.12.0, grouped. Flags and exact behavior: `references/cli.md`.
 
 ```
-authoring    init · create · check · plan
-running      run [--input --resume --again --show-steps] · stop
-inspecting   status · logs · outputs · timing · list conduits · list flows
+authoring    init · create · compose · check · plan · show · schema
+running      run [--input --resume --again --show-steps] · ask · wait · stop
+inspecting   diagnose · status · logs · outputs · timing · compare
+listing      list conduits · list flows · list harnesses · list schedules
 cleanup      rm · prune
-agents       list harnesses · harness check · harness sync
+agents       harness check · harness sync
 packages     install · update · uninstall
-scheduling   schedule add|rm|run-now|daemon · list schedules
+scheduling   schedule add|rm|run-now|history|daemon
 server       serve
+upgrading    self-update
 ```
 
 Older hidden aliases still work: `add`, `remove`, `scheduler start|status`,

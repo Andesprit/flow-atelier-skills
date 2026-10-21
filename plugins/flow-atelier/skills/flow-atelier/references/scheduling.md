@@ -77,6 +77,7 @@ atelier schedule add <file.{json,yaml}>    # install into .atelier/schedules/
 atelier list schedules [--json]           # installed schedules + next fire times
 atelier schedule rm <id-or-name>          # hard delete
 atelier schedule run-now <id-or-name>      # fire immediately, bypassing the daemon
+atelier schedule history <id-or-name> [--json]  # recorded runs, newest first
 ```
 
 `<id-or-name>` accepts the generated schedule id or the `schedule.name` you set.
