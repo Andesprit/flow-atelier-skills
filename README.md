@@ -102,6 +102,28 @@ claude plugin validate plugins/autonomous-projects
 claude plugin validate plugins/automatic-goal
 ```
 
+Run the maintainer routing suite with Claude Code's `plugin eval` support and an
+existing login (Python 3 required):
+
+```bash
+python3 evals/run_routing.py --max-cost-usd 8
+```
+
+The runner always uses `--no-publish`, `--trust-plugin`, `--ablation none` and
+`--runs 1`. It copies all six skills into one temporary `routing` plugin so every
+case competes against every skill, approximating installation of all three plugins.
+Cases stay outside shipped plugin folders. The 18 cases check skill selection,
+three forbidden routes and useful first steps on Atelier 0.12.0; the first-step
+judge uses Haiku by default. Results and retained traces go to
+`.atelier/routing-evals/<timestamp>/`; use `--output-dir <fresh-directory>` to save
+elsewhere, or `--case '<name-glob>'` for a focused rerun. The cost ceiling is checked
+before each run, so up to four in-flight runs can exceed it; use `--concurrency 1`
+for a tighter bound. The gate requires at least 90% of cases to pass every grader
+and every negative case to pass. Partial runs fail. JSON retains each failed grader
+and the native eval exit code even when the gate passes. One run per case is a
+routing smoke check; repeat runs to investigate variation. These cases propose
+commands only and do not prove live agent, scheduler or dashboard execution.
+
 Bump the affected plugin's version when publishing changes. Plugin packaging follows
 the [Claude Code marketplace documentation](https://code.claude.com/docs/en/plugin-marketplaces).
 
