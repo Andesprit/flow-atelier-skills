@@ -147,6 +147,9 @@ one skipped on collision survives an uninstall.
 
 ## The scheduler is not firing
 
+Follow [schedule-recovery.md](schedule-recovery.md): store, warnings, process,
+timing, history, then diagnose. In short:
+
 - `atelier list schedules` reads the files directly and **does not contact a
   daemon**. It cannot tell you the daemon is alive - check the process.
 - New or removed schedules are picked up on the next reload tick (default 30s).

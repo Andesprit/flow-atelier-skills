@@ -96,7 +96,8 @@ you do not need both.
 `list schedules` reads `.atelier/schedules/` **directly and does not contact a
 running daemon**. It tells you what is installed and when it would next fire, not
 whether anything is actually running. To confirm the daemon is alive, check the
-process.
+process. When a scheduled run did not happen, follow
+[schedule-recovery.md](schedule-recovery.md).
 
 ## Daemon behavior
 

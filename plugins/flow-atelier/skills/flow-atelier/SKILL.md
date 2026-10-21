@@ -277,6 +277,7 @@ always project-local, written under the directory you ran `atelier` from.
 - `references/harnesses.md` - the ACP registry, listing and checking agents,
   custom agents, interactive mode, env overrides.
 - `references/scheduling.md` - schedule file schema, all three modes, the daemon.
+- `references/schedule-recovery.md` - a scheduled run did not happen: what to read next.
 - `references/packages.md` - sharing conduits, `atelier-package.yaml`, install
   and update semantics.
 - `references/serve-and-api.md` - the HTTP/WS server, endpoints, and the
