@@ -134,6 +134,9 @@ To run a workflow with a different agent without editing it, use
 `atelier run <conduit> --agent <task>=<agent>`. See `references/harnesses.md`
 *Choosing an agent for one run*.
 
+To let tasks edit the same files without overwriting each other, give each one
+its own Git checkout with `--worktree <task>`. See `references/task-worktrees.md`.
+
 ### Templating
 
 | Expression | Resolves to |
@@ -288,3 +291,4 @@ always project-local, written under the directory you ran `atelier` from.
   security model.
 - `references/troubleshooting.md` - failure modes, debugging a flow, recovery.
 - `references/recovery-exercise.md` - optional hands-on practice: fail, diagnose, fix, resume.
+- `references/task-worktrees.md` - optional: separate Git checkouts per task, finding and reading their results.
