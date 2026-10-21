@@ -96,8 +96,10 @@ Ordered by how much they save:
    ceiling check, not a budget: it stops new activities, it does not cap a
    running one.
 4. Split proposal ticks from execution ticks. Run
-   `n_ideas=2 n_adhd=0 n_reviews=1 n_todo=0` to top up cheaply, and a separate
-   `n_ideas=0 n_adhd=0 n_reviews=0 n_todo=3` to burn down the queue.
+   `n_ideas=2 n_adhd=0 n_reviews=1 n_improve=0 n_todo=0` to top up cheaply, and
+   a separate `n_ideas=0 n_adhd=0 n_reviews=0 n_improve=0 n_todo=3` to burn down
+   the queue. Pass all five counts every time; complete commands are in
+   `tick-profiles.md`.
 
 If `max_usage` never seems to throttle: it fails open by design. Check `node` is
 on `PATH`, and look for `warning: no usage label for harness <name>`, which means
