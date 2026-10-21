@@ -107,7 +107,7 @@ flows unless `--force`. Both prompt unless `-y`.
 ## Agents
 
 ```bash
-atelier harness list [--ready] [--json]
+atelier list harnesses [--ready] [--json]
 atelier harness check <name> [--timeout SECONDS]
 atelier harness check --cmd "/opt/my-agent --acp"
 atelier harness sync
@@ -119,9 +119,9 @@ runs always read the local snapshot.
 ## Packages
 
 ```bash
-atelier add <source> [--ref GIT_REF] [--project/--no-project] [--force]
+atelier install <source> [--ref GIT_REF] [--project/--no-project] [--force]
 atelier update <package> [--force]
-atelier remove <package>
+atelier uninstall <package>
 ```
 
 See `packages.md`.
@@ -130,14 +130,13 @@ See `packages.md`.
 
 ```bash
 atelier schedule add <file.{json,yaml}>
-atelier schedule list [--json]
-atelier schedule remove <id-or-name>
+atelier list schedules [--json]
+atelier schedule rm <id-or-name>
 atelier schedule run-now <id-or-name>
-atelier scheduler start [--reload-interval 30] [--log-level INFO]
-atelier scheduler status [--json]
+atelier schedule daemon [--reload-interval 30] [--log-level INFO]
 ```
 
-See `scheduling.md`. `scheduler status` reads `.atelier/schedules/` directly and
+See `scheduling.md`. `list schedules` reads `.atelier/schedules/` directly and
 does **not** contact a running daemon - to confirm the daemon is alive, check the
 process.
 

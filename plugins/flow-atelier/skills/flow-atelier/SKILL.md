@@ -1,6 +1,6 @@
 ---
 name: flow-atelier
-description: Author, run, debug, schedule, share and serve flow-atelier conduits - the local-first YAML workflow runner whose steps are shell commands, AI coding agents (Claude Code, Codex, Gemini, opencode, Copilot, Cursor and ~40 more via the ACP registry), nested conduits, and human approval gates. Use when the user mentions flow-atelier, the `atelier` CLI, a conduit or conduit.yaml, a flow or flow_id, `.atelier/`, a harness or `harness:<name>`, `tool:bash` / `tool:hitl` / `tool:conduit`, HITL gates, `depends_on` conditions, repeat/until/while loops, `atelier run/check/plan/serve/schedule/harness/add`, or asks how to write a workflow YAML, wire steps together, loop a step until output matches, gate a step on what a previous step printed, run agents on a timer, or share conduits as a package.
+description: Author, run, debug, schedule, share and serve flow-atelier conduits - the local-first YAML workflow runner whose steps are shell commands, AI coding agents (Claude Code, Codex, Gemini, opencode, Copilot, Cursor and ~40 more via the ACP registry), nested conduits, and human approval gates. Use when the user mentions flow-atelier, the `atelier` CLI, a conduit or conduit.yaml, a flow or flow_id, `.atelier/`, a harness or `harness:<name>`, `tool:bash` / `tool:hitl` / `tool:conduit`, HITL gates, `depends_on` conditions, repeat/until/while loops, `atelier run/check/plan/serve/schedule/harness/install`, or asks how to write a workflow YAML, wire steps together, loop a step until output matches, gate a step on what a previous step printed, run agents on a timer, or share conduits as a package.
 version: 1.0.0
 ---
 
@@ -138,18 +138,21 @@ or incomplete task **skips** the referencing task.
 
 ## Command map
 
-Every command, grouped. Flags and exact behavior: `references/cli.md`.
+Commands for atelier 0.12.0, grouped. Flags and exact behavior: `references/cli.md`.
 
 ```
 authoring    init · create · check · plan
 running      run [--input --resume --again --show-steps] · stop
 inspecting   status · logs · outputs · timing · list conduits · list flows
 cleanup      rm · prune
-agents       harness list · harness check · harness sync
-packages     add · update · remove
-scheduling   schedule add|list|remove|run-now · scheduler start|status
+agents       list harnesses · harness check · harness sync
+packages     install · update · uninstall
+scheduling   schedule add|rm|run-now|daemon · list schedules
 server       serve
 ```
+
+Older hidden aliases still work: `add`, `remove`, `scheduler start|status`,
+`schedule list|remove` and `harness list`. Prefer the visible names above.
 
 Fastest loop when authoring: `atelier check` (validates, runs nothing) then
 `atelier plan <name>` (renders the DAG as waves, marks gates and sinks, runs

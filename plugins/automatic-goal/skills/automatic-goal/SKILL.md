@@ -8,7 +8,7 @@ description: Install, run, inspect, and troubleshoot the automatic-goal Flow Ate
 Source: https://github.com/Andesprit/automatic-goal
 
 This skill teaches operation. Install the executable `goal_loop` and `goal_iteration`
-conduits separately with `atelier add`. The director (Codex by default) owns observation,
+conduits separately with `atelier install`. The director (Codex by default) owns observation,
 priorities, review and final demonstration; the worker (Claude Code by default) implements
 and repairs. The director keeps one conversation for the whole run; the worker keeps one per
 milestone, from build to verdict.
@@ -40,7 +40,7 @@ Adapt these paths and branch names to the task and actual repository state:
 cd /path/to/project
 git worktree add ../project-goal -b goal/improvement
 cd ../project-goal
-atelier add Andesprit/automatic-goal --project
+atelier install Andesprit/automatic-goal --project
 atelier check goal_loop
 atelier check goal_iteration
 atelier plan goal_loop

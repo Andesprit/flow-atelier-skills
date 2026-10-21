@@ -23,10 +23,10 @@ a snapshot of which ships with each release. Roughly 40 agents, including
 `goose`, `amp-acp`.
 
 ```bash
-atelier harness list           # every agent, and whether it runs here
-atelier harness list --ready   # only the ones usable right now
-atelier harness list --json
-atelier harness sync           # refresh the snapshot from the network
+atelier list harnesses           # every agent, and whether it runs here
+atelier list harnesses --ready   # only the ones usable right now
+atelier list harnesses --json
+atelier harness sync            # refresh the snapshot from the network
 ```
 
 `harness sync` is the only command that touches the network. It stores the

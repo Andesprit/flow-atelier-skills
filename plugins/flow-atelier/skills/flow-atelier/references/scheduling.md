@@ -1,7 +1,7 @@
 # Scheduling
 
-`atelier scheduler` runs conduits on a wall-clock schedule. One schedule is one
-YAML (or JSON) file under `.atelier/schedules/<name>.yaml`. The daemon is a
+`atelier schedule daemon` runs conduits on a wall-clock schedule. One schedule is
+one YAML (or JSON) file under `.atelier/schedules/<name>.yaml`. The daemon is a
 single foreground process you can put under `systemd`, `launchd`, or any
 supervisor.
 
@@ -74,8 +74,8 @@ indistinguishable from one that already ran.
 
 ```bash
 atelier schedule add <file.{json,yaml}>    # install into .atelier/schedules/
-atelier schedule list [--json]             # installed schedules + next fire times
-atelier schedule remove <id-or-name>       # hard delete
+atelier list schedules [--json]           # installed schedules + next fire times
+atelier schedule rm <id-or-name>          # hard delete
 atelier schedule run-now <id-or-name>      # fire immediately, bypassing the daemon
 ```
 
@@ -84,14 +84,15 @@ atelier schedule run-now <id-or-name>      # fire immediately, bypassing the dae
 ## Running the daemon
 
 ```bash
-atelier scheduler start [--reload-interval 30] [--log-level INFO]
-atelier scheduler status [--json]
+atelier schedule daemon [--reload-interval 30] [--log-level INFO]
+atelier list schedules [--json]
 ```
 
-`start` runs in the foreground; Ctrl+C or SIGTERM stops it. `atelier serve` boots
-the same scheduler embedded alongside the HTTP server, so you do not need both.
+`schedule daemon` runs in the foreground; Ctrl+C or SIGTERM stops it.
+`atelier serve` boots the same scheduler embedded alongside the HTTP server, so
+you do not need both.
 
-`scheduler status` reads `.atelier/schedules/` **directly and does not contact a
+`list schedules` reads `.atelier/schedules/` **directly and does not contact a
 running daemon**. It tells you what is installed and when it would next fire, not
 whether anything is actually running. To confirm the daemon is alive, check the
 process.

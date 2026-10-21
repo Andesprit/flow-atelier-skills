@@ -57,8 +57,8 @@ supported by your agent. Keep each skill's references with it.
 Run these separately in the project where you intend to use the conduits:
 
 ```bash
-atelier add Andesprit/autonomous-projects --project
-atelier add Andesprit/automatic-goal --project
+atelier install Andesprit/autonomous-projects --project
+atelier install Andesprit/automatic-goal --project
 ```
 
 The automatic-goal skill explains dedicated worktree setup, required environment,

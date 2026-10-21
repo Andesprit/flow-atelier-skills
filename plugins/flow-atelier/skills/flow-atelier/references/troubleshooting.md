@@ -110,7 +110,7 @@ atelier harness check <name>      # costs no tokens
 | started but did not speak ACP | wrong entry point - most CLIs need `--acp` |
 | could not open a session | not logged in; the check lists the auth methods |
 
-Failures include the tail of the agent's own stderr. `atelier harness list --ready`
+Failures include the tail of the agent's own stderr. `atelier list harnesses --ready`
 shows what actually runs on this machine. If a name resolves to an `npx`/`uvx`
 agent, Node.js or uv must be on PATH.
 
@@ -125,15 +125,15 @@ from, so running the same conduit from two directories scatters the flow history
 
 ## A package upgrade did nothing
 
-`atelier add` **skips** conduits that already exist. Re-running it after a release
-changes nothing. Use `atelier update <package>`, or `atelier add <source> --force`.
+`atelier install` **skips** conduits that already exist. Re-running it after a release
+changes nothing. Use `atelier update <package>`, or `atelier install <source> --force`.
 
-`atelier remove <package>` deletes only conduits the install actually wrote, so
+`atelier uninstall <package>` deletes only conduits the install actually wrote, so
 one skipped on collision survives an uninstall.
 
 ## The scheduler is not firing
 
-- `atelier scheduler status` reads the files directly and **does not contact a
+- `atelier list schedules` reads the files directly and **does not contact a
   daemon**. It cannot tell you the daemon is alive - check the process.
 - New or removed schedules are picked up on the next reload tick (default 30s).
 - A `once` schedule whose `run_at` is in the past is rejected at install time; one

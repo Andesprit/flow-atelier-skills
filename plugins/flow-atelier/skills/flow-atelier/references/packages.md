@@ -1,13 +1,13 @@
 # Sharing conduits as packages
 
-A conduit is just a folder, so conduits are shareable. `atelier add` installs
+A conduit is just a folder, so conduits are shareable. `atelier install` installs
 them from a git repo or a local path.
 
 ```bash
-atelier add owner/repo                       # GitHub shorthand
-atelier add https://github.com/owner/repo.git
-atelier add ./some/local/package
-atelier add owner/repo --ref v1.2.0          # pin a branch, tag, or commit
+atelier install owner/repo                  # GitHub shorthand
+atelier install https://github.com/owner/repo.git
+atelier install ./some/local/package
+atelier install owner/repo --ref v1.2.0     # pin a branch, tag, or commit
 ```
 
 > **Conduits are code.** A conduit can run any shell command on your machine the
@@ -43,8 +43,8 @@ user has to edit and `atelier schedule add` them.
 ## Install target
 
 ```bash
-atelier add owner/repo --project      # into ./.atelier (this project only)
-atelier add owner/repo --no-project   # into ~/.atelier (every project)
+atelier install owner/repo --project      # into ./.atelier (this project only)
+atelier install owner/repo --no-project   # into ~/.atelier (every project)
 ```
 
 Omit both and you are asked. Global is the usual choice for a package you want to
@@ -53,21 +53,21 @@ run from anywhere; project-local wins on name collision at run time.
 ## Collision behavior
 
 An existing conduit of the same name is **skipped, not overwritten**, unless you
-pass `--force`. This is the rule that makes re-running `atelier add` after a new
-release a no-op - it does not upgrade anything.
+pass `--force`. This is the rule that makes re-running `atelier install` after a
+new release a no-op - it does not upgrade anything.
 
 To actually upgrade:
 
 ```bash
 atelier update <package>              # re-fetch from the recorded source, re-install
 atelier update <package> --force      # and overwrite colliding conduits
-atelier add <source> --force          # equivalent, naming the source again
+atelier install <source> --force      # equivalent, naming the source again
 ```
 
 ## Uninstall
 
 ```bash
-atelier remove <package>
+atelier uninstall <package>
 ```
 
 Deletes only the conduits that **install actually wrote**. A conduit that was

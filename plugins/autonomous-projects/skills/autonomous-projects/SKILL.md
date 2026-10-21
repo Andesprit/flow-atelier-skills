@@ -40,13 +40,13 @@ cheaper to catch here than mid-tick.
 
 ```bash
 uv tool install flow-atelier
-atelier add LGuillermoAngaritaG/autonomous-projects
+atelier install LGuillermoAngaritaG/autonomous-projects
 atelier list conduits
 ```
 
-`atelier list conduits` must show `autonomous-projects`. Note `atelier add`
+`atelier list conduits` must show `autonomous-projects`. Note `atelier install`
 skips conduits that already exist, so re-running it after a release changes
-nothing - use `atelier update autonomous-projects` or `atelier add --force`.
+nothing - use `atelier update autonomous-projects` or `atelier install --force`.
 
 **2. The agent-skills plugin** (inside Claude Code, both lines)
 
@@ -191,7 +191,7 @@ never touched until a run names `n_todo`.
 | `warning: adhd skill not found` | Skill not installed | `npx skills add UditAkhourii/adhd`, or accept the single-shot degrade |
 | `/agent-skills:*` did not resolve | Installed as skills, not as a plugin | Use `/plugin install agent-skills@addy-agent-skills` |
 | `max_usage` never throttles anything | `node` missing, or `warning: no usage label for harness` | Install node. The gate fails open by design, so it never blocks work |
-| Two ticks raced over the same board | Schedule interval shorter than the real tick duration | Widen the spacing. `tick_lock.py` wraps a *command*, so it covers cron but not `atelier scheduler` |
+| Two ticks raced over the same board | Schedule interval shorter than the real tick duration | Widen the spacing. `tick_lock.py` wraps a *command*, so it covers cron but not `atelier schedule daemon` |
 
 Reading tick output: `ok: true|false` is a usage gate, `made: N` / `remaining: N`
 is the per-tick counter, `task_counter: N` is a queue-drain check, and
@@ -224,7 +224,7 @@ schedule:
 
 ```bash
 atelier schedule add path/to/schedule.yaml
-atelier scheduler start
+atelier schedule daemon
 ```
 
 Name every count you care about - anything omitted keeps its default, so
@@ -236,7 +236,7 @@ tick. Four ready-to-edit example profiles ship in the package under
 is still working when the next fires, and the two race over the same board -
 most visibly `02_in-progress/`, which the stranded-task sweep clears wholesale.
 Set the interval wider than a real tick. To make it airtight, drive ticks from
-cron wrapped in the package's `tick_lock.py` instead of `atelier scheduler`:
+cron wrapped in the package's `tick_lock.py` instead of `atelier schedule daemon`:
 
 ```bash
 python3 <package>/.atelier/conduits/autonomous-projects/scripts/tick_lock.py \
