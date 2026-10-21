@@ -20,15 +20,19 @@ marker, so it tells you nothing about the daemon.
 A schedule added with `atelier schedule add` in a project goes to the project
 store, so a server never sees it, and the other way round.
 
-Run every command below from the scheduler's working directory, so a `.env`
-there and any relative `run_path` resolve the same way they do for the
-scheduler. To read the server's store, set the override for that one command
-only. Do not export it, or later commands read the wrong store:
+Choose the store path once, as `S`, and pass it to every schedule query, for
+that one command only. A bare `atelier list schedules` or `schedule history`
+reads `./.atelier` or a `.env` in the current folder, which may be another
+store. The inline setting wins over that `.env`, and a plain `S=...` is not
+exported, so later runs keep their own settings. Run from the scheduler's
+working directory, so a relative `run_path` resolves the same way:
 
 ```bash
-cd "/abs/path/the/daemon/runs/in"
-atelier list schedules --json                                  # CLI daemon store
-ATELIER_ATELIER_DIR="$HOME/.atelier" atelier list schedules --json   # serve store (default location)
+cd "/abs/path/the/scheduler/runs/in"
+S="$PWD/.atelier"      # CLI daemon default; use its ATELIER_ATELIER_DIR value if it has one
+# S="$HOME/.atelier"   # serve default; use its ATELIER_GLOBAL_ATELIER_DIR value if it has one
+ATELIER_ATELIER_DIR="$S" atelier list schedules --json
+ATELIER_ATELIER_DIR="$S" atelier schedule history <id-or-name> --json
 ```
 
 `list` and `history` create `.atelier/` and `.atelier/schedules/` when they are
@@ -95,13 +99,13 @@ store it belongs to. Do not delete or reset markers as a routine fix.
 ## 5. Read the history and diagnose the run
 
 ```bash
-atelier schedule history <id-or-name> --json     # newest first
+ATELIER_ATELIER_DIR="$S" atelier schedule history <id-or-name> --json   # same S as step 1, newest first
 ```
 
 | You see | It supports | Still unknown | Next |
 |---|---|---|---|
-| `"status": "failed"` with a `flow_id` | the run started and failed | the cause | `atelier diagnose <flow_id>`, run from the row's `working_dir` (the schedule's `run_path`), because flows are saved under it. For nested runs follow the child diagnose it prints |
-| `"status": "failed"`, `"flow_id": null` | it failed before any flow started | the cause; there is no flow to diagnose | the daemon log `FAILED schedule <id>` traceback; check the conduit resolves from that working dir with `atelier list conduits` |
+| `"status": "failed"` with a `flow_id` | the run started and failed | the cause | `ATELIER_ATELIER_DIR="<working_dir>/.atelier" atelier diagnose <flow_id>`, with the row's `working_dir` (the schedule's `run_path`), because the run saved its flow there. Do not reuse `S`: the schedule store is not where flows live. For nested runs follow the child diagnose it prints |
+| `"status": "failed"`, `"flow_id": null` | it failed before any flow started | the cause; there is no flow to diagnose | the daemon log `FAILED schedule <id>` traceback; check the conduit resolves there with `ATELIER_ATELIER_DIR="<working_dir>/.atelier" atelier list conduits` |
 | `"status": "succeeded"` | the run finished cleanly | whether its output is what you wanted | read the flow in `<working_dir>/.atelier/flows/` |
 | `"runs": []` | no finished fire is recorded | whether one is running now or crashed (a record is written only when a fire ends), ran through `run-now` (not recorded), or the state file was lost (step 4) | step 3 for the process and log at the expected fire time |
 
