@@ -121,7 +121,7 @@ not a live provider balance; accepted milestones are not proof of whole-goal com
 
 Version 2.0.0 guidance matches the outcome-driven automatic-goal conduits: persistent briefs,
 opportunity comparisons, multiple commits per milestone, ACCEPT/REVISE/ABANDON decisions,
-a default 20% finishing reserve, bounded recovery and a final demonstration. Install both
+a default 10% finishing reserve, bounded recovery and a final demonstration. Install both
 updated conduits together after finishing or inspecting existing runs, preserving local edits.
 Do not resume legacy KEEP/DISCARD flows with the new workflow; their history remains readable.
 Installing this plugin supplies instructions, not the executable reader or web assets.
