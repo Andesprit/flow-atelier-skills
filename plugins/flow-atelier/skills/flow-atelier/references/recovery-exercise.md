@@ -5,7 +5,8 @@ work. A three-step shell workflow fails on purpose, you read the diagnosis, fix 
 one missing file and resume the same run. A small ledger file shows which steps
 did their work.
 
-You need only the `atelier` CLI ([first run](first-run.md), step 1) and a shell.
+You need only the `atelier` CLI ([first run](first-run.md), step 1) and `bash`,
+which macOS and most Linux systems include.
 No agent, login, server or package. It takes a few minutes. Every file it writes,
 including Atelier's own saved runs, stays inside one new directory.
 
@@ -14,11 +15,16 @@ including Atelier's own saved runs, stays inside one new directory.
 Run this in a terminal, from the folder where you want the lab directory:
 
 ```bash
-mkdir atelier-recovery-lab && cd atelier-recovery-lab && env ATELIER_ATELIER_DIR="$PWD/.atelier" ATELIER_GLOBAL_ATELIER_DIR="$PWD/lab-global" ATELIER_NO_UPDATE_CHECK=1 "${SHELL:-/bin/sh}"
+mkdir atelier-recovery-lab && cd atelier-recovery-lab && env ATELIER_ATELIER_DIR="$PWD/.atelier" ATELIER_GLOBAL_ATELIER_DIR="$PWD/lab-global" ATELIER_NO_UPDATE_CHECK=1 HISTFILE= PS1='recovery-lab$ ' bash --noprofile --norc
 ```
 
-It opens a new shell inside the new directory. Your prompt may look the same.
-That shell has three settings that only it and the commands you run in it see:
+It opens a new `bash` shell inside the new directory, with the prompt
+`recovery-lab$ `. Run the rest of the exercise at that prompt, even if your usual
+shell is zsh or fish. `--noprofile --norc` stops your startup files from
+changing the lab settings, and the empty `HISTFILE` keeps the lab's commands out
+of your shell history file. On macOS, `bash` may first print a note that the
+default shell is now zsh; you can ignore it. The lab shell has three settings that only it and the
+commands you run in it see:
 
 - `ATELIER_ATELIER_DIR` keeps the project store (conduits and saved runs) in the
   lab's `.atelier`, even if your normal shell or a `.env` points elsewhere.
