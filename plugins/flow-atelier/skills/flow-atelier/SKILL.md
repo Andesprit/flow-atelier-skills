@@ -234,6 +234,9 @@ always project-local, written under the directory you ran `atelier` from.
 
 ## Traps worth knowing up front
 
+- **Agent permissions default to automatic approval.** Set `interaction.permissions`
+  to `human`, `supervisor` or `hybrid` to change this; see the interaction policy
+  in `references/conduit-yaml.md`.
 - **Task names take no hyphens.** `[A-Za-z0-9_]` only. Conduit names allow them.
   `my-task` is a validation error; `my_task` is fine.
 - **A loop that never matches its predicate still completes.** `repeat: 5` with a

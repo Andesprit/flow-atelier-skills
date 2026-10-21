@@ -64,6 +64,152 @@ tasks:
 *shape* checked (`^[a-z0-9][a-z0-9-]*$`); whether an executor is registered for
 it is answered later, at run time.
 
+## Agent sessions
+
+Set `session` on `harness:<name>` tasks to continue a named agent conversation
+across tasks in the same run. Nested conduits inherit the top-level run's
+session scope. Only the same harness can reuse a saved conversation; a different
+harness starts its own conversation even if the name matches.
+
+Save this as `.atelier/conduits/shared_session/conduit.yaml`:
+
+```yaml
+name: shared_session
+description: Two sequential turns in a named agent conversation
+inputs:
+  conversation: {default: review}
+tasks:
+  - draft:
+      description: Draft an approach
+      tool: harness:codex
+      session: "{{inputs.conversation}}"
+      task: Describe an approach to the requested change.
+  - refine:
+      description: Refine the same approach
+      tool: harness:codex
+      session: "{{inputs.conversation}}"
+      depends_on: [draft]
+      task: Refine your earlier approach and explain the tradeoff.
+```
+
+`depends_on` orders these turns. A session name can be a literal such as
+`review`, or a template using inputs or earlier outputs, just like `task`.
+Names are stripped of surrounding whitespace. A changed name selects another
+conversation; returning to an existing name can reuse it. An empty *rendered*
+name means no shared session. A literal blank `session` fails validation with
+`session must not be empty`; using it on a non-harness task fails with
+`session requires a harness:<name> tool`.
+
+Continuation is best effort: if the harness cannot reload the saved session or
+refuses it, Atelier logs a warning and starts a fresh conversation. Do not rely
+on earlier context always being available. The automatic-goal package's
+`goal_iteration` conduit uses the same pattern: `session: manager` on its
+director tasks, and `session: '{{milestone_session.output}}'` on its worker.
+
+## Interaction policy
+
+**By default, agent permission requests are approved automatically.** Set
+`interaction.permissions: human` to ask a person instead, or choose `supervisor`
+or `hybrid` and configure a supervisor. This policy applies to harness tasks.
+
+`interaction` is a conduit-level block. Questions and permissions have separate
+policies:
+
+| Field | Values | Default |
+|---|---|---|
+| `questions` | `human`, `supervisor`, `hybrid` | `human` |
+| `permissions` | `approve_all`, `human`, `supervisor`, `hybrid` | `approve_all` |
+| `supervisor` | configuration below | absent; required for either supervised mode |
+
+- `human` asks the person running the flow. For a permission request, enter an
+  offered option ID or `cancel` to deny it.
+- `supervisor` asks the configured agent to answer or select a permission
+  option. It must decide; escalation to a human is unavailable. A supervisor
+  error fails the interaction.
+- `hybrid` asks the supervisor first. It can escalate a decision to a human;
+  supervisor errors, timeouts and exhausted limits also fall back to a human.
+- `approve_all` applies only to permissions and approves requests automatically.
+
+Questions route through this policy on tasks with `interactive: true` (or when
+interactive harness mode is enabled for the run). Setting `questions` alone
+does not enable interactive turns. Permission requests use their policy in
+both single-turn and interactive tasks. Keep a terminal/input channel available
+for `human` and `hybrid` policies.
+
+### Supervisor configuration
+
+| Field | Type | Default | Rules |
+|---|---|---|---|
+| `tool` | str | required | `harness:<name>`, using the same harness tool syntax as tasks |
+| `instructions` | str | `""` | instructions for decisions on the user's behalf |
+| `max_replies` | int | `8` | `>= 1`; supervisor attempts per worker invocation, shared by questions and permissions |
+| `timeout` | int | `120` | `>= 1`, seconds per supervisor call, capped by the worker task's timeout |
+| `max_context_chars` | int | `200000` | `>= 1`; maximum assembled supervisor prompt, including task, inputs, session and request |
+
+The supervisor receives the task and conversation to decide on the user's
+behalf. Its decision runs in a separate session from the worker. An attempted
+supervisor reply consumes the reply budget even if it fails.
+
+Save this as `.atelier/conduits/supervised/conduit.yaml`:
+
+```yaml
+name: supervised
+description: Route worker questions and permissions through a supervisor
+interaction:
+  questions: hybrid
+  permissions: supervisor
+  supervisor:
+    tool: harness:codex
+    instructions: Answer within the stated task. Escalate missing requirements to the user.
+    max_replies: 4
+    timeout: 60
+    max_context_chars: 100000
+tasks:
+  - worker:
+      description: Work with supervised interaction
+      tool: harness:codex
+      interactive: true
+      task: Inspect the project and explain one improvement. Ask about missing requirements.
+```
+
+Here, questions can reach a human, while permission decisions must come from
+the supervisor. Instructions allowing escalation apply only to the `hybrid`
+question policy.
+
+### Limits and validation errors
+
+Once the reply budget is spent, the next supervisor request raises
+`supervisor reply limit (4) reached` for the example above. An oversized prompt
+raises `supervisor context limit exceeded; session was not truncated`. Context
+is rejected rather than silently trimmed. Both errors fail a `supervisor`
+interaction; `hybrid` asks a human instead. Increase the relevant limit or
+choose a policy that can reach a human when needed.
+
+Choosing `supervisor` or `hybrid` without a `supervisor` block fails validation:
+
+```text
+supervisor configuration is required for supervisor/hybrid modes
+```
+
+An invalid `questions` value, such as `automatic`, reports:
+
+```text
+Input should be 'human', 'supervisor' or 'hybrid'
+```
+
+Check these complete examples before running them:
+
+```bash
+atelier check shared_session
+atelier plan shared_session
+atelier check supervised
+atelier plan supervised
+```
+
+These commands validate the definitions and show the task order without
+starting agents; they do not prove that an agent can continue a session or
+answer a supervisor request at runtime.
+
 ## Dependencies and conditions
 
 ```
