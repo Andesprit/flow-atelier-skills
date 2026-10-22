@@ -6,7 +6,7 @@ Three independently installable Claude Code plugins for Flow Atelier.
 |---|---|---|
 | `flow-atelier` | `flow-atelier`, `claude-via-atelier` | Understand Atelier; author, run and debug conduits; configure schedules, harnesses and packages; consult Claude through Atelier |
 | `autonomous-projects` | `autonomous-projects` | Operate the autonomous-projects conduit, project board, proposal counts and approved-task workflow |
-| `automatic-goal` | `automatic-goal`, `goal-report`, `goal-monitor` | Pursue user outcomes with Codex supervision and review, Claude implementation and repair, and evidence-backed session reports |
+| `automatic-goal` | `automatic-goal`, `goal-report`, `goal-monitor`, `goal-review` | Pursue user outcomes with Codex supervision and review, Claude implementation and repair, evidence-backed session reports, and stakeholder reviews |
 
 These plugins provide agent instructions. They do not install the Atelier CLI,
 authenticate agents, install executable conduits, or start runs.
@@ -88,6 +88,10 @@ plugins/
       automatic-goal/SKILL.md
       goal-report/SKILL.md
       goal-monitor/SKILL.md
+      goal-review/
+        SKILL.md
+        scripts/
+        references/
 ```
 
 Plugin sources are relative paths within this repository. Each plugin is self-contained
@@ -118,6 +122,12 @@ covering what, why and how; discarded ideas also explain why they were dropped. 
 validation and technical history remain available below the summary (`report --details`).
 The dashboard refreshes saved records every three seconds. Usage is a recorded sample,
 not a live provider balance; accepted milestones are not proof of whole-goal completion.
+
+`goal-review` turns one or many finished runs into stakeholder material: a short report,
+an optional round of gap-fixing agents, a detail page with What, Why and How for every
+change, a deck with one slide per project and a narrated video of about ten minutes. The
+video needs a Python with `kokoro_onnx` and `soundfile`, the Kokoro model files in
+`KOKORO_MODELS` (default `~/.local/share/kokoro`), Playwright's Chromium and `ffmpeg`.
 
 Version 2.0.0 guidance matches the outcome-driven automatic-goal conduits: persistent briefs,
 opportunity comparisons, multiple commits per milestone, ACCEPT/REVISE/ABANDON decisions,
