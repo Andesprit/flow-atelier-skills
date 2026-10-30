@@ -1,12 +1,13 @@
 # Flow Atelier plugin marketplace
 
-Three independently installable Claude Code plugins for Flow Atelier.
+Four independently installable Claude Code plugins for Flow Atelier.
 
 | Plugin | Included skills | Purpose |
 |---|---|---|
 | `flow-atelier` | `flow-atelier`, `claude-via-atelier` | Understand Atelier; author, run and debug conduits; configure schedules, harnesses and packages; consult Claude through Atelier |
 | `autonomous-projects` | `autonomous-projects` | Operate the autonomous-projects conduit, project board, proposal counts and approved-task workflow |
 | `automatic-goal` | `automatic-goal`, `goal-report`, `goal-monitor`, `goal-review` | Pursue user outcomes with Codex supervision and review, Claude implementation and repair, evidence-backed session reports, and stakeholder reviews |
+| `managing-managers` | `managing-managers` | Turn a conversation into a confirmed queue of small briefs and run them with an Opus manager, Codex workers and fresh Codex reviewers, one pull request per brief |
 
 These plugins provide agent instructions. They do not install the Atelier CLI,
 authenticate agents, install executable conduits, or start runs.
@@ -20,6 +21,7 @@ Register the marketplace once, then install whichever plugins you need:
 /plugin install flow-atelier@flow-atelier-skills
 /plugin install autonomous-projects@flow-atelier-skills
 /plugin install automatic-goal@flow-atelier-skills
+/plugin install managing-managers@flow-atelier-skills
 ```
 
 Each plugin includes its own skills and references; none requires another plugin.
@@ -59,6 +61,7 @@ Run these separately in the project where you intend to use the conduits:
 ```bash
 atelier add Andesprit/autonomous-projects --project
 atelier add Andesprit/automatic-goal --project
+atelier add Andesprit/managing-managers --project
 ```
 
 The automatic-goal skill explains dedicated worktree setup, required environment,

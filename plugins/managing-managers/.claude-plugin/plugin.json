@@ -1,0 +1,10 @@
+{
+  "name": "managing-managers",
+  "description": "Turn a conversation into a queue of small written briefs, then run them one by one with an Opus manager, Codex workers and fresh Codex reviewers, one pull request per brief.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Andesprit"
+  },
+  "homepage": "https://github.com/Andesprit/flow-atelier-skills",
+  "license": "MIT"
+}
