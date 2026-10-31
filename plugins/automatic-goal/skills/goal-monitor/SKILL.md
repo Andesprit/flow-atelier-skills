@@ -1,6 +1,6 @@
 ---
 name: goal-monitor
-description: Open the read-only local automatic-goal session dashboard showing completed changes, open work, outcome status, evidence, priorities and saved technical history.
+description: Open, inspect, and troubleshoot the read-only local automatic-goal session dashboard in a browser. Use for progress views, stale usage samples, recorded active status, refresh failures and checking the dashboard snapshot. Shows completed changes, open work, outcome status, evidence, priorities and saved technical history. For a written session retrospective, use goal-report.
 ---
 
 # Goal monitor

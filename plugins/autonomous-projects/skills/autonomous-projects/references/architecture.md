@@ -192,5 +192,5 @@ Real, in the shipped design, worth knowing before blaming your own setup:
 - **`promote_reviewed.py` promotes `sorted(cards)[0]`,** not necessarily the card
   the builder worked. Only reachable when two ticks overlap, but under that race
   it promotes an unfinished card and leaves the finished one to be re-worked.
-- **Overlapping ticks are not guarded by `atelier scheduler`.** `tick_lock.py`
+- **Overlapping ticks are not guarded by `atelier schedule daemon`.** `tick_lock.py`
   wraps a command, so it covers cron and custom timers only.

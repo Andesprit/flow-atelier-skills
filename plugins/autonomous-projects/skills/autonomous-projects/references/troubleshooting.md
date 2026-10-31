@@ -4,7 +4,16 @@ The symptom table in `SKILL.md` covers the common cases. This file is for when
 that is not enough: how to inspect a board by hand, how to recover a stuck one,
 and how to read what a tick actually reported.
 
-## First: look at the board, not the logs
+## A tick failed: diagnose it first
+
+Run `atelier diagnose <flow_id>` from the directory holding the tick's flows.
+It explains the failure and suggests next commands without starting tasks.
+If it names a failed nested run, follow the child
+`atelier diagnose <child_flow_id>` it prints for the original exit status;
+the parent report does not include full child history. Fix the cause before
+resuming or starting another tick.
+
+## A successful tick did nothing: look at the board
 
 Almost every "it did nothing" report is answered by listing the stage folders.
 
@@ -87,8 +96,10 @@ Ordered by how much they save:
    ceiling check, not a budget: it stops new activities, it does not cap a
    running one.
 4. Split proposal ticks from execution ticks. Run
-   `n_ideas=2 n_adhd=0 n_reviews=1 n_todo=0` to top up cheaply, and a separate
-   `n_ideas=0 n_adhd=0 n_reviews=0 n_todo=3` to burn down the queue.
+   `n_ideas=2 n_adhd=0 n_reviews=1 n_improve=0 n_todo=0` to top up cheaply, and
+   a separate `n_ideas=0 n_adhd=0 n_reviews=0 n_improve=0 n_todo=3` to burn down
+   the queue. Pass all five counts every time; complete commands are in
+   `tick-profiles.md`.
 
 If `max_usage` never seems to throttle: it fails open by design. Check `node` is
 on `PATH`, and look for `warning: no usage label for harness <name>`, which means

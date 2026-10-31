@@ -40,13 +40,13 @@ cheaper to catch here than mid-tick.
 
 ```bash
 uv tool install flow-atelier
-atelier add LGuillermoAngaritaG/autonomous-projects
+atelier install LGuillermoAngaritaG/autonomous-projects
 atelier list conduits
 ```
 
-`atelier list conduits` must show `autonomous-projects`. Note `atelier add`
+`atelier list conduits` must show `autonomous-projects`. Note `atelier install`
 skips conduits that already exist, so re-running it after a release changes
-nothing - use `atelier update autonomous-projects` or `atelier add --force`.
+nothing - use `atelier update autonomous-projects` or `atelier install --force`.
 
 **2. The agent-skills plugin** (inside Claude Code, both lines)
 
@@ -88,10 +88,35 @@ belong.
 
 ## Run a tick
 
+Pick the job first, then always pass `project_root` and **all five counts**.
+Set every count the user did not ask for to `0`:
+
+| The user wants | Counts (`ideas/adhd/reviews/improve/todo`) |
+|---|---|
+| Approved work done | `0/0/0/0/3` - check the queue first, see below |
+| New proposals to triage | `2/0/1/0/0` |
+| Raw `00_tasks/` notes turned into specs | `0/0/0/3/0` |
+| A mix, or exact counts | exactly their values, others `0` |
+
+Approved work only (the most common request):
+
 ```bash
 atelier run autonomous-projects --input project_root=/abs/path/to/your/repo \
-  --input n_ideas=2 --input n_adhd=0 --input n_reviews=1 --input n_todo=3
+  --input n_ideas=0 --input n_adhd=0 --input n_reviews=0 --input n_improve=0 --input n_todo=3
 ```
+
+When approved work is the only job, first count the `.md` cards in
+`01_to-do/` and `02_in-progress/`. If both are readable and empty, report "no
+approved or in-progress work" and skip the tick, unless the user asked to run
+it anyway. An unreadable or missing folder is a setup problem, not an empty
+queue.
+
+Before you start, state the effective mix in one line, for example "approved
+work only: up to 3 tasks, no proposals, max_usage 80". If the request already
+asks you to run it, run it; do not ask the same permission again. Ask only when
+the job or a count is really unclear. Complete commands for each job, the board
+result to expect, and what the counts do not limit:
+`references/tick-profiles.md`.
 
 | Input | Default | What it does |
 |---|---|---|
@@ -164,19 +189,29 @@ This is the most common point of confusion. Proposals in `00_backlog/` are
 **not** a queue. Two ways to get the bot to do work rather than propose it:
 
 1. **Drop a raw task** into `00_tasks/` - a `.md` file with whatever you want,
-   even one rough line, no frontmatter needed. Run with `--input n_improve=N`.
+   even one rough line, no frontmatter needed. Run the raw-tasks profile
+   (`n_improve=N`, the other four counts `0`).
    The bot runs spec + plan on it, writes a polished `task_*.md` into
    `00_backlog/` with your wording carried verbatim into `# Description`, and
    deletes the raw file. Then triage it to `01_to-do/` like any proposal.
-2. **Write a ready task** straight into `01_to-do/` and run `--input n_todo=N`.
-   Skips the spec/plan step. Copy the shape of the package's
+2. **Write a ready task** straight into `01_to-do/` and run the approved-work
+   profile (`n_todo=N`, the other four counts `0`). Skips the spec/plan step.
+   Copy the shape of the package's
    `.atelier/conduits/autonomous-projects/references/task_template.md`; you only
    need to fill `# Description` and set `priority`.
 
 Either way, **`n_todo` defaults to `0`** - a task sitting in `01_to-do/` is
-never touched until a run names `n_todo`.
+never touched until a run names `n_todo`. Never pass `n_todo` or `n_improve`
+alone: the unnamed proposal counts keep their 10 / 3 / 5 defaults. The full
+commands are in `references/tick-profiles.md`.
 
 ## Troubleshooting
+
+If the tick fails, run `atelier diagnose <flow_id>` first, from the directory
+you ran the tick in. If it names a failed nested run, follow the child
+`atelier diagnose <child_flow_id>` it prints to see the original exit status.
+The parent report does not include full child history. Follow its suggested
+next commands and fix the cause before resuming or starting another tick.
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -185,13 +220,13 @@ never touched until a run names `n_todo`.
 | Ran a tick, `00_backlog/` is empty | Branch stopped early | Look for `stopped:` in the output - see the two rows below |
 | `stopped: usage ceiling reached` | Harness at or over `max_usage` | Wait for the 5h window, or raise `max_usage` |
 | `stopped: missing ===IDEA START===` | Generation step ended its turn before finishing | Re-run. Finished work from that branch is kept |
-| Approved task never got implemented | `n_todo` defaults to `0`, or the card is still in `00_backlog/` | Move it to `01_to-do/` and run with `n_todo=N` |
+| Approved task never got implemented | `n_todo` defaults to `0`, or the card is still in `00_backlog/` | Move it to `01_to-do/` and run the approved-work profile |
 | Task ended up in `05_blocked/` | Reviewer never returned DONE within 10 retries, or the run was cut off | Read the `# Blocked` note and `# How was done and tested`, fix the blocker, move it back to `01_to-do/` |
 | Quota disappeared | `n_adhd` is ~10 agent calls per idea | Run with `n_adhd=0` |
 | `warning: adhd skill not found` | Skill not installed | `npx skills add UditAkhourii/adhd`, or accept the single-shot degrade |
 | `/agent-skills:*` did not resolve | Installed as skills, not as a plugin | Use `/plugin install agent-skills@addy-agent-skills` |
 | `max_usage` never throttles anything | `node` missing, or `warning: no usage label for harness` | Install node. The gate fails open by design, so it never blocks work |
-| Two ticks raced over the same board | Schedule interval shorter than the real tick duration | Widen the spacing. `tick_lock.py` wraps a *command*, so it covers cron but not `atelier scheduler` |
+| Two ticks raced over the same board | Schedule interval shorter than the real tick duration | Widen the spacing. `tick_lock.py` wraps a *command*, so it covers cron but not `atelier schedule daemon` |
 
 Reading tick output: `ok: true|false` is a usage gate, `made: N` / `remaining: N`
 is the per-tick counter, `task_counter: N` is a queue-drain check, and
@@ -213,6 +248,7 @@ inputs:
   n_ideas: "2"
   n_adhd: "0"
   n_reviews: "1"
+  n_improve: "0"
   n_todo: "5"
   max_usage: "80"
 schedule:
@@ -224,10 +260,10 @@ schedule:
 
 ```bash
 atelier schedule add path/to/schedule.yaml
-atelier scheduler start
+atelier schedule daemon
 ```
 
-Name every count you care about - anything omitted keeps its default, so
+Name all five counts - anything omitted keeps its default, so
 leaving out `n_adhd` schedules 3 divergent ideas (about 30 agent calls) every
 tick. Four ready-to-edit example profiles ship in the package under
 `.atelier/schedules/`, but they are examples, not installed state.
@@ -236,15 +272,19 @@ tick. Four ready-to-edit example profiles ship in the package under
 is still working when the next fires, and the two race over the same board -
 most visibly `02_in-progress/`, which the stranded-task sweep clears wholesale.
 Set the interval wider than a real tick. To make it airtight, drive ticks from
-cron wrapped in the package's `tick_lock.py` instead of `atelier scheduler`:
+cron wrapped in the package's `tick_lock.py` instead of `atelier schedule daemon`:
 
 ```bash
 python3 <package>/.atelier/conduits/autonomous-projects/scripts/tick_lock.py \
-  atelier run autonomous-projects --input project_root=/abs/path/to/your/repo
+  atelier run autonomous-projects --input project_root=/abs/path/to/your/repo \
+  --input n_ideas=0 --input n_adhd=0 --input n_reviews=0 --input n_improve=0 --input n_todo=3
 ```
 
 ## References
 
+- `references/tick-profiles.md` - complete commands for approved work,
+  proposals, raw-task specs and mixes, the queue check, board results, and
+  what the counts and `max_usage` do not limit.
 - `references/architecture.md` - the tick DAG, the usage gates, how a loop stops
   at N, the two-agent execution loop, and the helper scripts. Read this when
   debugging the package itself or changing a conduit.

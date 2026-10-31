@@ -1,5 +1,7 @@
 # The `atelier` CLI - every command
 
+Command names and flags below target atelier 0.12.0.
+
 Global: `atelier --version`, `atelier --install-completion`,
 `atelier --show-completion`.
 
@@ -13,6 +15,8 @@ atelier init                                   # scaffold .atelier/ + a hello co
 atelier create <name> [-d/--description TEXT]  # scaffold one empty conduit
 atelier check [<conduit>]                      # validate; omit the name to check all
 atelier plan <conduit>                         # render the DAG as waves; runs nothing
+atelier show <conduit> [--json]                # read the definition that would run
+atelier schema                                # print this version's JSON Schema
 ```
 
 `init` writes `.atelier/conduits/hello/conduit.yaml`, a one-task bash conduit
@@ -25,6 +29,41 @@ references, and lists each conduit's required inputs. It runs no tasks.
 plain and conditional edges, loop predicates, sinks, and short-circuit gates.
 Read-only - no flow is created.
 
+`show` writes the exact YAML to stdout and its source/path to stderr. Project
+conduits shadow global ones, including when the project copy is broken.
+`--json` instead returns source, path, normalized definition and declared input
+names. It does not validate every template; use `check` for readiness.
+
+For editor completion, save the schema:
+
+```bash
+atelier schema > .atelier/conduit.schema.json
+```
+
+For a conduit at `.atelier/conduits/<name>/conduit.yaml`, add
+`# yaml-language-server: $schema=../../conduit.schema.json` as its first line.
+Regenerate after upgrading Atelier. Schema validation checks structure;
+`atelier check` still checks dependency references, loop predicates and agents.
+
+### Compose an agent workflow
+
+```bash
+atelier compose review --step "claude-code=Draft a solution" --step "codex=Review it"
+atelier compose panel --parallel --step "claude-code=Review correctness" \
+  --step "codex=Review tests" --synthesize "claude-code=Combine the reviews"
+```
+
+At least two repeatable `--step` / `-s HARNESS=PROMPT` options are required.
+Steps form a chain by default. `--parallel` gives each only the brief;
+`--synthesize HARNESS=PROMPT` requires `--parallel` and adds a final task reading
+all results. `--description` / `-d TEXT` sets the conduit description.
+
+Harness names come from `atelier list harnesses`, optionally with `:<model>` or
+`:<model>:<effort>`. Prompts preserve equals signs after the first `=`, but must
+not contain `{{...}}`. Compose writes ordinary YAML and runs no agent. Read and
+edit it, run `atelier check review`, then
+`atelier run review --input brief="<the work to do>"`.
+
 ## Running
 
 ```bash
@@ -32,7 +71,10 @@ atelier run <conduit> [--input key=value]...
 atelier run <conduit> --hide-steps          # default is --show-steps
 atelier run --resume <flow_id>              # pick up a failed or crashed run
 atelier run --again <flow_id>               # fresh run reusing a past flow's inputs
+atelier run <conduit> --agent review=codex  # another agent for one task, this run only
+atelier run <conduit> --worktree draft_a     # that task in its own Git checkout
 atelier stop <flow_id>                      # gracefully halt a running flow
+atelier wait <flow_id> [--timeout SECONDS]   # watch an already-started run
 ```
 
 | Flag | Notes |
@@ -41,6 +83,8 @@ atelier stop <flow_id>                      # gracefully halt a running flow
 | `--show-steps` / `--hide-steps` | stream intermediate agent thinking and tool activity live (default: show) |
 | `--resume` | flow id, prefix matching supported. `conduit_name` is not needed |
 | `--again` | flow id, prefix ok; starts a new flow with the saved inputs |
+| `--worktree` | `TASK`, repeatable; top-level `tool:bash`/`harness:` tasks get separate Git checkouts, unnamed tasks stay in the shared directory, nothing is merged back. See [task-worktrees.md](task-worktrees.md) |
+| `--agent` | `TASK=HARNESS`, repeatable; top-level `harness:` tasks only, the file is unchanged, saved for `--again`/`--resume`. See [Choosing an agent for one run](harnesses.md#choosing-an-agent-for-one-run) |
 
 As soon as the flow starts, a run prints its id and the address of its live page
 (`--resume` prints the page too):
@@ -63,21 +107,40 @@ after [tool:bash]  skipped  (condition not met: tick.output.match(done))
 flow_id: 20260727_0eb21391_loopdemo
 ```
 
-On failure it names the failing task and suggests the resume command.
+On failure it names the failing task and suggests the resume command. First run
+`atelier diagnose <flow_id>` to understand the cause before resuming.
+
+`wait` starts nothing and changes nothing. Its default timeout is 60 seconds.
+It exits 0 only for a saved `completed` run, printing just the resolved flow id
+to stdout; it exits 1 for failure, stop or a dead runner, 124 on timeout, and
+130 on Ctrl+C. Timeout or interruption leaves the run going. For scripts:
+
+```bash
+flow_id=$(atelier wait latest --timeout 60) && atelier outputs "$flow_id"
+```
+
+For an interactive agent conversation, use
+`atelier ask "<prompt>" --path /abs/path` in a live terminal. `--path` / `-p` is
+required; `--harness NAME[:MODEL[:EFFORT]]` selects the agent (default
+`claude-code`). Answer its questions until it finishes.
 
 ## Inspecting
 
 ```bash
+atelier diagnose <flow_id> [--json]
 atelier status <flow_id> [--json]
 atelier logs <flow_id> [-t TASK] [-s CHANNEL] [-n N] [-f] [--json]
 atelier outputs <flow_id> [-t TASK] [--json]
 atelier timing <flow_id> [--json]
 atelier list conduits [--json]
 atelier list flows [-c CONDUIT] [--json]
+atelier compare <first_flow_id> <second_flow_id> [--json]
+atelier compare <conduit> [--json]           # compare its two newest runs
 ```
 
 | Command | Reads | Use it for |
 |---|---|---|
+| `diagnose` | saved run records | first step after failure: cause, retained work and next commands |
 | `status` | `progress.json` | per-task state of a run, live or finished |
 | `logs` | `logs.jsonl` | what a task actually printed |
 | `outputs` | `outputs.yaml` | the value each task produced |
@@ -93,6 +156,15 @@ records `null` for skipped tasks.
 
 `timing` sums repeated iterations, so a looped step shows its true total cost.
 
+`diagnose` is read-only and starts no agent. A successful reading exits 0 even
+when the run failed; this is not a run-success check. It accepts a unique id
+prefix or `latest`. For failed nested work, follow the printed child
+`atelier diagnose <child_flow_id>` for the original exit status; the parent
+does not aggregate full child history. See `troubleshooting.md`.
+
+`compare` reads saved runs to compare agent choices, loop outcomes and duration.
+Pass two flow ids, or a conduit name to select its two newest runs.
+
 ## Cleanup
 
 ```bash
@@ -107,21 +179,21 @@ flows unless `--force`. Both prompt unless `-y`.
 ## Agents
 
 ```bash
-atelier harness list [--ready] [--json]
+atelier list harnesses [--ready] [--json]
 atelier harness check <name> [--timeout SECONDS]
 atelier harness check --cmd "/opt/my-agent --acp"
 atelier harness sync
 ```
 
-See `harnesses.md`. `harness sync` is the only command that touches the network;
-runs always read the local snapshot.
+See `harnesses.md`. `harness sync` refreshes the registry from the network;
+harness discovery and runs read the local snapshot.
 
 ## Packages
 
 ```bash
-atelier add <source> [--ref GIT_REF] [--project/--no-project] [--force]
+atelier install <source> [--ref GIT_REF] [--project/--no-project] [--force]
 atelier update <package> [--force]
-atelier remove <package>
+atelier uninstall <package>
 ```
 
 See `packages.md`.
@@ -130,16 +202,19 @@ See `packages.md`.
 
 ```bash
 atelier schedule add <file.{json,yaml}>
-atelier schedule list [--json]
-atelier schedule remove <id-or-name>
+atelier list schedules [--json]
+atelier schedule rm <id-or-name>
 atelier schedule run-now <id-or-name>
-atelier scheduler start [--reload-interval 30] [--log-level INFO]
-atelier scheduler status [--json]
+atelier schedule history <id-or-name> [--json]
+atelier schedule daemon [--reload-interval 30] [--log-level INFO]
 ```
 
-See `scheduling.md`. `scheduler status` reads `.atelier/schedules/` directly and
+See `scheduling.md`. `list schedules` reads `.atelier/schedules/` directly and
 does **not** contact a running daemon - to confirm the daemon is alive, check the
 process.
+
+`schedule history` shows recorded runs newest first. `schedule daemon` runs in
+the foreground until Ctrl+C or SIGTERM; `serve` also embeds a scheduler.
 
 ## Server
 
@@ -151,6 +226,17 @@ atelier serve [--host 127.0.0.1] [--port 8000] [--reload-interval 30.0] \
 `--port 0` picks an ephemeral port. `--cors-origin` is repeatable. See
 `serve-and-api.md` for endpoints and the security rules that govern non-loopback
 binds.
+
+## Upgrade Atelier
+
+```bash
+atelier self-update
+```
+
+For binary installs, downloads, verifies and installs the latest release.
+For pip/uv-managed installs this command exits with guidance to use
+`uv tool upgrade flow-atelier` instead. Package updates remain
+`atelier update <package>`.
 
 ## Environment variables
 

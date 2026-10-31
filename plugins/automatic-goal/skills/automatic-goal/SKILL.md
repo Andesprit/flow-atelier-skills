@@ -8,7 +8,7 @@ description: Install, run, inspect, and troubleshoot the automatic-goal Flow Ate
 Source: https://github.com/Andesprit/automatic-goal
 
 This skill teaches operation. Install the executable `goal_loop` and `goal_iteration`
-conduits separately with `atelier add`. The director (Codex by default) owns observation,
+conduits separately with `atelier install`. The director (Codex by default) owns observation,
 priorities, review and final demonstration; the worker (Claude Code by default) implements
 and repairs. The director keeps one conversation for the whole run; the worker keeps one per
 milestone, from build to verdict.
@@ -40,7 +40,7 @@ Adapt these paths and branch names to the task and actual repository state:
 cd /path/to/project
 git worktree add ../project-goal -b goal/improvement
 cd ../project-goal
-atelier add Andesprit/automatic-goal --project
+atelier install Andesprit/automatic-goal --project
 atelier check goal_loop
 atelier check goal_iteration
 atelier plan goal_loop
@@ -227,9 +227,14 @@ how it works. Each discarded idea retains the attempted approach and intended be
 plus the evidence and reason for dropping it. Keep technical history secondary;
 `report --details` includes the full records. Never invent missing historical detail.
 
-Inspect before resuming:
+If a run fails, start with `atelier diagnose <flow_id>` from the directory
+holding its flows. If it names a failed nested run, run the child
+`atelier diagnose <child_flow_id>` it prints to see the original exit status;
+the parent report does not include full child history. Follow its suggested
+next commands, then inspect before resuming:
 
 ```bash
+atelier diagnose <flow_id>
 git status
 atelier status <flow_id>
 atelier outputs <flow_id>
@@ -237,6 +242,9 @@ atelier logs <flow_id>
 cat .atelier/goal/handoff.md
 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 atelier run --resume <flow_id>
 ```
+
+For a setup refusal, match its message to the cause and fix in
+[references/troubleshooting.md](references/troubleshooting.md). It also explains usage pauses.
 
 Resume preserves the original deadline and checkpoint. A terminal BLOCKED or
 OPERATIONAL_FAILURE run needs inspection and an explicit decision about preserved changes

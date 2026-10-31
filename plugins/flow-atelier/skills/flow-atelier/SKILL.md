@@ -1,6 +1,6 @@
 ---
 name: flow-atelier
-description: Author, run, debug, schedule, share and serve flow-atelier conduits - the local-first YAML workflow runner whose steps are shell commands, AI coding agents (Claude Code, Codex, Gemini, opencode, Copilot, Cursor and ~40 more via the ACP registry), nested conduits, and human approval gates. Use when the user mentions flow-atelier, the `atelier` CLI, a conduit or conduit.yaml, a flow or flow_id, `.atelier/`, a harness or `harness:<name>`, `tool:bash` / `tool:hitl` / `tool:conduit`, HITL gates, `depends_on` conditions, repeat/until/while loops, `atelier run/check/plan/serve/schedule/harness/add`, or asks how to write a workflow YAML, wire steps together, loop a step until output matches, gate a step on what a previous step printed, run agents on a timer, or share conduits as a package.
+description: Author, run, debug, schedule, share and serve flow-atelier conduits - the local-first YAML workflow runner whose steps are shell commands, AI coding agents (Claude Code, Codex, Gemini, opencode, Copilot, Cursor and ~40 more via the ACP registry), nested conduits, and human approval gates. Use when the user mentions flow-atelier, the `atelier` CLI, a conduit or conduit.yaml, a flow or flow_id, `.atelier/`, a harness or `harness:<name>`, `tool:bash` / `tool:hitl` / `tool:conduit`, HITL gates, `depends_on` conditions, repeat/until/while loops, `atelier run/check/plan/serve/schedule/harness/install`, or asks how to write a workflow YAML, wire steps together, loop a step until output matches, gate a step on what a previous step printed, run agents on a timer, or share conduits as a package.
 version: 1.0.0
 ---
 
@@ -40,6 +40,13 @@ atelier init                          # writes .atelier/conduits/hello/
 atelier run hello --input name=world
 atelier serve                         # visual editor and run pages on :8000
 ```
+
+For a newcomer, [first run](references/first-run.md) gives a verified shell-only
+start, its expected output and a setup-failure map.
+
+For a complete starting point, see [recipes](references/recipes.md): review loops,
+agent handoffs, human approval, test/fix loops, and a nightly schedule. Each has
+copyable YAML, check/run commands, expected results and a first recovery step.
 
 ## Anatomy of a conduit
 
@@ -123,6 +130,13 @@ skips a task, it does not fail it** - and everything downstream skips too.
 `tool:*` is a closed set. `harness:*` is open - any ACP agent in the registry,
 plus anything you register yourself.
 
+To run a workflow with a different agent without editing it, use
+`atelier run <conduit> --agent <task>=<agent>`. See `references/harnesses.md`
+*Choosing an agent for one run*.
+
+To let tasks edit the same files without overwriting each other, give each one
+its own Git checkout with `--worktree <task>`. See `references/task-worktrees.md`.
+
 ### Templating
 
 | Expression | Resolves to |
@@ -138,22 +152,36 @@ or incomplete task **skips** the referencing task.
 
 ## Command map
 
-Every command, grouped. Flags and exact behavior: `references/cli.md`.
+Commands for atelier 0.12.0, grouped. Flags and exact behavior: `references/cli.md`.
 
 ```
-authoring    init · create · check · plan
-running      run [--input --resume --again --show-steps] · stop
-inspecting   status · logs · outputs · timing · list conduits · list flows
+authoring    init · create · compose · check · plan · show · schema
+running      run [--input --resume --again --show-steps] · ask · wait · stop
+inspecting   diagnose · status · logs · outputs · timing · compare
+listing      list conduits · list flows · list harnesses · list schedules
 cleanup      rm · prune
-agents       harness list · harness check · harness sync
-packages     add · update · remove
-scheduling   schedule add|list|remove|run-now · scheduler start|status
+agents       harness check · harness sync
+packages     install · update · uninstall
+scheduling   schedule add|rm|run-now|history|daemon
 server       serve
+upgrading    self-update
 ```
+
+Older hidden aliases still work: `add`, `remove`, `scheduler start|status`,
+`schedule list|remove` and `harness list`. Prefer the visible names above.
 
 Fastest loop when authoring: `atelier check` (validates, runs nothing) then
 `atelier plan <name>` (renders the DAG as waves, marks gates and sinks, runs
 nothing), then `atelier run`.
+
+To inspect a workflow you did not write before running it, the optional
+`scripts/inspect_workflow.py <project-path> <conduit> [--json]` beside this file
+reports the file a run would use, required inputs, top-level tools and validity
+in one command, without running the workflow or an agent. See `references/inspection.md`.
+
+**A run failed? Start with `atelier diagnose <flow_id>`.** It explains what
+failed and suggests next commands without running tasks. For a failed nested
+run, follow the child diagnosis it prints. See `references/troubleshooting.md`.
 
 ## Show the user the run page
 
@@ -225,6 +253,9 @@ always project-local, written under the directory you ran `atelier` from.
 
 ## Traps worth knowing up front
 
+- **Agent permissions default to automatic approval.** Set `interaction.permissions`
+  to `human`, `supervisor` or `hybrid` to change this; see the interaction policy
+  in `references/conduit-yaml.md`.
 - **Task names take no hyphens.** `[A-Za-z0-9_]` only. Conduit names allow them.
   `my-task` is a validation error; `my_task` is fine.
 - **A loop that never matches its predicate still completes.** `repeat: 5` with a
@@ -243,15 +274,21 @@ always project-local, written under the directory you ran `atelier` from.
 
 ## References
 
+- `references/first-run.md` - first shell run, what it proves, setup failures.
+- `references/recipes.md` - complete recipes for common jobs, with verification limits.
 - `references/conduit-yaml.md` - complete authoring reference: every schema
   field and its validation, the condition DSL, loop semantics and truth tables,
   templating, HITL, nested conduits.
 - `references/cli.md` - every command with its flags and behavior.
+- `references/inspection.md` - optional one-command, read-only report on an existing workflow.
 - `references/harnesses.md` - the ACP registry, listing and checking agents,
-  custom agents, interactive mode, env overrides.
+  choosing an agent for one run, custom agents, interactive mode, env overrides.
 - `references/scheduling.md` - schedule file schema, all three modes, the daemon.
+- `references/schedule-recovery.md` - a scheduled run did not happen: what to read next.
 - `references/packages.md` - sharing conduits, `atelier-package.yaml`, install
   and update semantics.
 - `references/serve-and-api.md` - the HTTP/WS server, endpoints, and the
   security model.
 - `references/troubleshooting.md` - failure modes, debugging a flow, recovery.
+- `references/recovery-exercise.md` - optional hands-on practice: fail, diagnose, fix, resume.
+- `references/task-worktrees.md` - optional: separate Git checkouts per task, finding and reading their results.

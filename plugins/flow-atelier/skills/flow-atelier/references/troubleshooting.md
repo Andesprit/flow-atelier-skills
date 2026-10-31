@@ -1,6 +1,20 @@
 # Troubleshooting
 
-## Reach for these first
+## A run failed: start here
+
+```bash
+atelier diagnose <flow_id>
+```
+
+This reads the saved run and explains the failed task, its reason, the stderr
+tail and suggested next commands. It runs no tasks. If it names a failed nested
+run, follow the child `atelier diagnose <child_flow_id>` it prints to see the
+original exit status. The parent report does not include full child history.
+
+Use the report's suggested task logs if more detail is needed. Fix the cause
+before resuming; a resume can run agents and modify files again.
+
+## Authoring and follow-up checks
 
 ```bash
 atelier check <conduit>      # schema, deps, loop predicates, template refs
@@ -79,8 +93,10 @@ flow_id: 20260727_09f441fa_exhaust
 -> atelier run --resume 20260727_09f441fa_exhaust
 ```
 
-`--resume` picks up where it stopped. `--again` starts fresh with the same
-inputs. Both take a flow id prefix.
+After diagnosis and any fix, `--resume` picks up where it stopped. `--again`
+starts fresh with the same inputs. Both take a flow id prefix. To practise this
+on a harmless shell-only flow first, see the
+[recovery exercise](recovery-exercise.md).
 
 Other failure sources:
 
@@ -110,7 +126,7 @@ atelier harness check <name>      # costs no tokens
 | started but did not speak ACP | wrong entry point - most CLIs need `--acp` |
 | could not open a session | not logged in; the check lists the auth methods |
 
-Failures include the tail of the agent's own stderr. `atelier harness list --ready`
+Failures include the tail of the agent's own stderr. `atelier list harnesses --ready`
 shows what actually runs on this machine. If a name resolves to an `npx`/`uvx`
 agent, Node.js or uv must be on PATH.
 
@@ -125,15 +141,18 @@ from, so running the same conduit from two directories scatters the flow history
 
 ## A package upgrade did nothing
 
-`atelier add` **skips** conduits that already exist. Re-running it after a release
-changes nothing. Use `atelier update <package>`, or `atelier add <source> --force`.
+`atelier install` **skips** conduits that already exist. Re-running it after a release
+changes nothing. Use `atelier update <package>`, or `atelier install <source> --force`.
 
-`atelier remove <package>` deletes only conduits the install actually wrote, so
+`atelier uninstall <package>` deletes only conduits the install actually wrote, so
 one skipped on collision survives an uninstall.
 
 ## The scheduler is not firing
 
-- `atelier scheduler status` reads the files directly and **does not contact a
+Follow [schedule-recovery.md](schedule-recovery.md): store, warnings, process,
+timing, history, then diagnose. In short:
+
+- `atelier list schedules` reads the files directly and **does not contact a
   daemon**. It cannot tell you the daemon is alive - check the process.
 - New or removed schedules are picked up on the next reload tick (default 30s).
 - A `once` schedule whose `run_at` is in the past is rejected at install time; one
@@ -168,4 +187,5 @@ after: null
 
 For per-iteration detail use `atelier logs <flow_id> -t <task> -s all`. For
 nested runs, `GET /flows/:id/logs` returns the whole descendant tree in one
-response; on the CLI, descend into `flows/<child_flow_id>/` yourself.
+response; on the CLI, use the child ids printed by `atelier diagnose` with
+`atelier diagnose <child_flow_id>` or `atelier logs <child_flow_id>`.
