@@ -1,6 +1,6 @@
 {
   "name": "flow-atelier-skills",
-  "description": "Three plugins for Flow Atelier, autonomous project boards, and time-bounded automatic goals.",
+  "description": "Four plugins for Flow Atelier, autonomous project boards, time-bounded automatic goals, and brief-driven managed runs.",
   "owner": {
     "name": "Andesprit",
     "url": "https://github.com/Andesprit"
@@ -20,6 +20,11 @@
       "name": "automatic-goal",
       "description": "Operate outcome-driven goal runs, bounded review and repair, session reports, and a read-only local dashboard.",
       "source": "./plugins/automatic-goal"
+    },
+    {
+      "name": "managing-managers",
+      "description": "Write a queue of small briefs from a conversation and run them with a manager, workers and fresh reviewers, one pull request per brief.",
+      "source": "./plugins/managing-managers"
     }
   ]
 }

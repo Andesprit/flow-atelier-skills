@@ -43,7 +43,7 @@ class RoutingRunnerTest(unittest.TestCase):
             def evaluate(command, cwd):
                 plugin = Path(command[3])
                 self.assertEqual(cwd, run_routing.ROOT)
-                self.assertEqual(len(list((plugin / "skills").glob("*/SKILL.md"))), 6)
+                self.assertEqual(len(list((plugin / "skills").glob("*/SKILL.md"))), 8)
                 self.assertEqual([p.parent.name for p in (plugin / "evals").glob("*/prompt.md")], ["workflow-check"])
                 self.assertEqual(json.loads((plugin / ".claude-plugin/plugin.json").read_text())["name"], "routing")
                 for flag in ("--trust-plugin", "--no-publish", "--keep-temp"):

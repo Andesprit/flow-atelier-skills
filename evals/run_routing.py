@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate all six skills together without adding cases to shipped plugins."""
+"""Evaluate all eight skills together without adding cases to shipped plugins."""
 
 import argparse
 from fnmatch import fnmatchcase
@@ -83,7 +83,7 @@ def main():
         (plugin / ".claude-plugin").mkdir()
         (plugin / ".claude-plugin/plugin.json").write_text(json.dumps({
             "name": NAMESPACE, "version": "1.0.0",
-            "description": "Maintainer routing evaluation of all three plugins"}))
+            "description": "Maintainer routing evaluation of all four plugins"}))
         versions = {}
         for source in sorted((ROOT / "plugins").iterdir()):
             manifest = json.loads((source / ".claude-plugin/plugin.json").read_text())

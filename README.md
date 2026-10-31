@@ -1,6 +1,6 @@
 # Flow Atelier plugin marketplace
 
-Three independently installable Claude Code plugins for Flow Atelier. They give an
+Four independently installable Claude Code plugins for Flow Atelier. They give an
 agent instructions. They do not install the Atelier CLI, log in agents, install
 executable conduits, or start runs.
 
@@ -13,7 +13,8 @@ Install only the plugin your job needs. Each skill link has the detailed setup.
 | Write and run workflows | `flow-atelier`: [flow-atelier](plugins/flow-atelier/skills/flow-atelier/SKILL.md) | plugin, `atelier` CLI. An agent only for agent steps. | In a terminal, follow [first run](plugins/flow-atelier/skills/flow-atelier/references/first-run.md). In Claude: "Write a conduit that runs my tests and stops when they pass." | `hello world` from a shell-only flow; no agent runs. |
 | Ask Claude from Codex | `flow-atelier`: [claude-via-atelier](plugins/flow-atelier/skills/claude-via-atelier/SKILL.md) | the skill in Codex (see [other agents](#install-skills-in-other-agents)), `atelier` CLI, a Claude Code login | In a terminal: `atelier harness check claude-code`. Then in Codex: "Ask Claude to review src/ and report problems." | Claude's answer plus Codex's own check. The request is a real Claude run and spends its quota. |
 | Let an agent work through an approved task board | `autonomous-projects`: [autonomous-projects](plugins/autonomous-projects/skills/autonomous-projects/SKILL.md) | plugin, CLI, the autonomous-projects package, the separate `agent-skills` plugin, a Claude Code login | In Claude: "Set up autonomous-projects for this repo, but do not run a tick." | Each [setup step](plugins/autonomous-projects/skills/autonomous-projects/SKILL.md#setup-on-a-new-repo) checked and a board to fill in. A tick is a separate, paid request. |
-| Pursue an outcome for a fixed time | `automatic-goal`: [automatic-goal](plugins/automatic-goal/skills/automatic-goal/SKILL.md), [goal-report](plugins/automatic-goal/skills/goal-report/SKILL.md), [goal-monitor](plugins/automatic-goal/skills/goal-monitor/SKILL.md) | plugin, CLI 0.12.0+, the automatic-goal package, Claude Code and Codex logins, a dedicated Git worktree | In Claude: "Check whether this repo is ready for a 2-hour automatic goal. Do not start it." | The [prerequisite checks](plugins/automatic-goal/skills/automatic-goal/SKILL.md#prepare-a-project) and what is missing. A run starts only when you ask for one and spends both agents' quota. |
+| Pursue an outcome for a fixed time | `automatic-goal`: [automatic-goal](plugins/automatic-goal/skills/automatic-goal/SKILL.md), [goal-report](plugins/automatic-goal/skills/goal-report/SKILL.md), [goal-monitor](plugins/automatic-goal/skills/goal-monitor/SKILL.md), [goal-review](plugins/automatic-goal/skills/goal-review/SKILL.md) | plugin, CLI 0.12.0+, the automatic-goal package, Claude Code and Codex logins, a dedicated Git worktree | In Claude: "Check whether this repo is ready for a 2-hour automatic goal. Do not start it." | The [prerequisite checks](plugins/automatic-goal/skills/automatic-goal/SKILL.md#prepare-a-project) and what is missing. A run starts only when you ask for one and spends both agents' quota. |
+| Build several changes from written briefs | `managing-managers`: [managing-managers](plugins/managing-managers/skills/managing-managers/SKILL.md) | plugin, CLI 0.12.0+, the managing-managers package, Claude Code and Codex logins, a dedicated Git worktree; `gh` for pull requests | In Claude: "Turn these three improvements into briefs for managing managers. Do not start the run." | A numbered queue of briefs to confirm. A run starts only after you confirm it and spends both agents' quota. |
 
 ## Install plugins in Claude Code
 
@@ -25,7 +26,7 @@ plugin for your job:
 /plugin install flow-atelier@flow-atelier-skills
 ```
 
-Replace `flow-atelier` with `autonomous-projects` or `automatic-goal` for those jobs.
+Replace `flow-atelier` with `autonomous-projects`, `automatic-goal` or `managing-managers` for those jobs.
 Each plugin includes its own skills and references; none requires another plugin.
 The marketplace identifier remains `flow-atelier-skills`.
 
@@ -88,10 +89,11 @@ supported by your agent. Keep each skill's references with it.
 
 ## Install the executable workflow packages
 
-The board and goal jobs also need an executable package in the project you work on.
+The board, goal and brief jobs also need an executable package in the project you work on.
 These are optional for the other jobs. Use the exact commands in each skill:
 [autonomous-projects setup](plugins/autonomous-projects/skills/autonomous-projects/SKILL.md#setup-on-a-new-repo)
-and [automatic-goal preparation](plugins/automatic-goal/skills/automatic-goal/SKILL.md#prepare-a-project).
+[automatic-goal preparation](plugins/automatic-goal/skills/automatic-goal/SKILL.md#prepare-a-project)
+and [managing-managers worktree setup](plugins/managing-managers/skills/managing-managers/SKILL.md#2-prepare-the-worktree).
 Installing a plugin or a package does not authorize or start an autonomous run.
 
 ## Repository layout
@@ -117,6 +119,10 @@ plugins/
       automatic-goal/SKILL.md
       goal-report/SKILL.md
       goal-monitor/SKILL.md
+      goal-review/
+        SKILL.md
+        scripts/
+        references/
 ```
 
 Plugin sources are relative paths within this repository. Each plugin is self-contained
@@ -169,6 +175,12 @@ covering what, why and how; discarded ideas also explain why they were dropped. 
 validation and technical history remain available below the summary (`report --details`).
 The dashboard refreshes saved records every three seconds. Usage is a recorded sample,
 not a live provider balance; accepted milestones are not proof of whole-goal completion.
+
+`goal-review` turns one or many finished runs into stakeholder material: a short report,
+an optional round of gap-fixing agents, a detail page with What, Why and How for every
+change, a deck with one slide per project and a narrated video of about ten minutes. The
+video needs a Python with `kokoro_onnx` and `soundfile`, the Kokoro model files in
+`KOKORO_MODELS` (default `~/.local/share/kokoro`), Playwright's Chromium and `ffmpeg`.
 
 Version 2.0.0 guidance matches the outcome-driven automatic-goal conduits: persistent briefs,
 opportunity comparisons, multiple commits per milestone, ACCEPT/REVISE/ABANDON decisions,

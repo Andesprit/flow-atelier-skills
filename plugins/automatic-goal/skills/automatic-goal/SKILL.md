@@ -91,6 +91,8 @@ every choice is reported usable. `--resume` keeps the choice.
 | `min_codex_remaining` | 30 | Codex weekly remaining floor |
 | `usage_poll_seconds` | 300 | Seconds between paused checks, 1–3600 |
 | `claude_weekly_model` | Fable | Model whose weekly meter the first floor applies to, or `all` |
+| `pull_request` | true | Open or update a pull request for the accepted work when the run ends |
+| `pull_request_base` | empty | Branch the pull request targets; empty means the repository default |
 
 Floors refer to remaining percentages. The first floor reads the Fable model meter, not
 Claude's all-model total, unless `claude_weekly_model` names another model (for example
@@ -183,7 +185,14 @@ pitfall, a decision). They appear under "What we know" at the top of the shared 
 which every agent reads before exploring; a note taken on work that was rolled back stays,
 marked as unverified.
 
-Nothing is pushed or deployed by the conduit. Agents write request-bound JSON following
+Nothing is deployed, and nothing is pushed while the run works. When it ends with accepted
+work, `pr_ready` checks for `origin` and a signed-in `gh`, a Claude Code agent writes the
+title and description with the `pull-request` skill (What, Why, How, Validation), and
+`pr_open` pushes only the accepted HEAD without force and opens the pull request: a draft
+unless ACHIEVED, or an update of the branch's open one. A skip prints its reason and the
+flow still completes; a rejected push fails `pr_open` and opens nothing. The link is in
+`state.json` and the handoff. Install the `pull-request` skill in `~/.claude/skills` so the
+headless agent finds it. Agents write request-bound JSON following
 `.atelier/conduits/goal_iteration/stage-results.md`; final chat markers do not control it.
 Before ending a turn each agent runs `run.py check`, which validates that result against
 the request and the actual Git state without changing anything, so a malformed result is
