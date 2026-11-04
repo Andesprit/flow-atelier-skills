@@ -26,8 +26,8 @@ that works before any AI tool is installed.
 references, and lists each conduit's required inputs. It runs no tasks.
 
 `plan` validates first (failing identically to `check`), then renders waves with
-plain and conditional edges, loop predicates, sinks, and short-circuit gates.
-Read-only - no flow is created.
+plain and conditional edges, loop predicates, sinks, short-circuit gates, and
+each agent task's permission level. Read-only - no flow is created.
 
 `show` writes the exact YAML to stdout and its source/path to stderr. Project
 conduits shadow global ones, including when the project copy is broken.
@@ -122,7 +122,8 @@ flow_id=$(atelier wait latest --timeout 60) && atelier outputs "$flow_id"
 For an interactive agent conversation, use
 `atelier ask "<prompt>" --path /abs/path` in a live terminal. `--path` / `-p` is
 required; `--harness NAME[:MODEL[:EFFORT]]` selects the agent (default
-`claude-code`). Answer its questions until it finishes.
+`claude-code`). Answer its questions until it finishes. The agent runs with full
+permissions unless `ATELIER_AGENT_PERMISSIONS` sets another level.
 
 ## Inspecting
 
@@ -186,7 +187,8 @@ atelier harness sync
 ```
 
 See `harnesses.md`. `harness sync` refreshes the registry from the network;
-harness discovery and runs read the local snapshot.
+harness discovery and runs read the local snapshot. `harness check` also shows
+the mode runs will use at the `ATELIER_AGENT_PERMISSIONS` level.
 
 ## Packages
 
@@ -257,5 +259,6 @@ All prefixed `ATELIER_`, readable from a `.env` file in the working directory.
 | `ATELIER_COPILOT_LAUNCH_CMD` | registry | JSON argv override |
 | `ATELIER_CURSOR_LAUNCH_CMD` | registry | JSON argv override |
 | `ATELIER_DONE_MARKER` | `[ATELIER_DONE]` | token that ends an `interactive: true` conversation |
+| `ATELIER_AGENT_PERMISSIONS` | `full` | `full`, `edits` or `read-only` for every agent task, also `atelier ask`; a task's `permissions:` wins. See [permission levels](conduit-yaml.md#agent-permission-levels) |
 | `ATELIER_API_TOKEN` | empty | bearer token for the HTTP/WS API |
 | `ATELIER_SERVE_URL` | `http://127.0.0.1:8000` | base of the `run page` link a run prints |
