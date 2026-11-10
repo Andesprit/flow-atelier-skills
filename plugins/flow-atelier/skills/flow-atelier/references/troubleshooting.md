@@ -39,6 +39,7 @@ engine.
 | `until and while are mutually exclusive` | both set | keep one |
 | `until requires repeat > 1` | loop predicate on a single-run task | add `repeat: N` |
 | `on_exhaust requires until or while` | `on_exhaust` with no predicate | remove it or add a predicate |
+| `on_failed_try requires until or while` | `on_failed_try: fail` with no predicate | remove it; a plain `repeat` already stops at the first failure |
 | `permissions requires a harness:<name> tool` | `permissions` on a `tool:*` task | remove it; the level only applies to agents |
 | `stagnation_limit requires repeat > 1` / `must be >= 2` | out of range | `>= 2`, and `repeat > 1` |
 | `invalid regex in dependency` | the regex does not compile | check escaping; quote the YAML string |

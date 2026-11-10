@@ -44,6 +44,7 @@ Values arrive as strings from `--input key=value`.
 | `until` | str | none | `output.match(...)` / `output.not_match(...)`; requires `repeat > 1` |
 | `while` | str | none | same grammar; mutually exclusive with `until` |
 | `on_exhaust` | `complete`\|`fail` | `complete` | requires `until` or `while` |
+| `on_failed_try` | `retry`\|`fail` | `retry` | requires `until` or `while`; `fail` ends the loop at the first failed try |
 | `stagnation_limit` | int | none | `>= 2`, requires `repeat > 1` |
 | `retries` | int | `0` | `>= 0`; re-runs a task that **failed** |
 | `retry_backoff` | float | `0.0` | `>= 0`, seconds between retries |
@@ -336,6 +337,13 @@ on it: the try counts toward `repeat`, and the next try starts. **If the last
 try still fails, the task fails, whatever `on_exhaust` says**, so a red test
 loop still stops its dependents. Up to 0.12, a failed try ended the loop at
 once and failed the run.
+
+Set `on_failed_try: fail` to keep that older rule on one loop: the first try
+that still fails after its `retries` fails the task, with that try's exit code
+and error, and `atelier run --resume` goes on in the same try. Use it for a
+loop that walks through stages (a work queue, a long goal run), where a
+failure means something is broken and the next pass would only fail again. The
+default is `retry`.
 
 The next try sees what went wrong through `{{loop.previous}}`: a first line
 `[this try failed with exit code N]`, then the try's output, then its error
