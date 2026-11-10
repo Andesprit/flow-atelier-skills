@@ -85,7 +85,7 @@ inputs:
 tasks:
   - prepare:
       description: prepare the topic
-      task: 'echo "topic={{inputs.topic}}"'
+      task: 'echo "topic=$INPUT_TOPIC"'
       tool: tool:bash
   - draft:
       description: first draft
@@ -221,8 +221,10 @@ terminal, and if `[ATELIER_DONE]` has not appeared, flow-atelier asks **you** fo
 the next message to send back. The loop ends when the token shows up. The token
 is configurable via `ATELIER_DONE_MARKER`.
 
-If the agent asks permission to run a tool, you get a numbered menu on the
-terminal and your choice is sent back as the answer.
+Permission requests are approved automatically by default, within the task's
+`permissions` level. With `interaction.permissions: human`, a request the level
+allows shows a numbered menu on the terminal and your choice is sent back as
+the answer. See [Agent permission levels](conduit-yaml.md#agent-permission-levels).
 
 Interactive tasks need a human at the keyboard. For unattended runs (scheduled
 ticks, CI) leave `interactive: false` and shape the prompt so one turn is enough.

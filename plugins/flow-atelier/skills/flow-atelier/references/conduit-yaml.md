@@ -44,11 +44,13 @@ Values arrive as strings from `--input key=value`.
 | `until` | str | none | `output.match(...)` / `output.not_match(...)`; requires `repeat > 1` |
 | `while` | str | none | same grammar; mutually exclusive with `until` |
 | `on_exhaust` | `complete`\|`fail` | `complete` | requires `until` or `while` |
+| `on_failed_try` | `retry`\|`fail` | `retry` | requires `until` or `while`; `fail` ends the loop at the first failed try |
 | `stagnation_limit` | int | none | `>= 2`, requires `repeat > 1` |
 | `retries` | int | `0` | `>= 0`; re-runs a task that **failed** |
 | `retry_backoff` | float | `0.0` | `>= 0`, seconds between retries |
 | `timeout` | int | inherits conduit | `>= 1`, seconds, overrides for this task |
 | `interactive` | bool | `false` | harness tasks only; see `harnesses.md` |
+| `permissions` | `full`\|`edits`\|`read-only` | `ATELIER_AGENT_PERMISSIONS`, else `full` | harness tasks only; see [Agent permission levels](#agent-permission-levels) |
 | `inputs` | map | `{}` | HITL question set, or inputs passed to a nested conduit |
 
 The YAML task form is a list of single-key maps; the key becomes `name`:
@@ -106,11 +108,63 @@ on earlier context always being available. The automatic-goal package's
 `goal_iteration` conduit uses the same pattern: `session: manager` on its
 director tasks, and `session: '{{milestone_session.output}}'` on its worker.
 
+## Agent permission levels
+
+**Agents run with full permissions by default.** An agent task can edit any
+file and run any command. Atelier switches the agent to the most permissive
+mode it knows, such as Claude Code's `bypassPermissions`, and approves every
+permission request the agent sends. A prompt, or text the agent reads in the
+project, can lead it to do damage. Limit it with the task field `permissions`:
+
+| Value | What the agent may do without asking |
+|---|---|
+| `full` | Everything. This is the default. |
+| `edits` | Read and change files. Atelier picks an accept-edits mode when the agent has one, such as Claude Code's `acceptEdits`, else a read-only mode that asks before each edit, such as Codex's `read-only`. It allows requests to read, search, edit, move or delete files, and rejects the rest, such as running a command or fetching a URL. |
+| `read-only` | Only read, as far as Atelier is asked. Atelier picks a read-only mode such as Codex's `read-only`, else keeps the agent's own mode (leaving a bypass mode first), and rejects every request. |
+
+Set it on one task with `permissions:`, or for every agent task with
+`ATELIER_AGENT_PERMISSIONS` in the environment or in `.env`. The task field
+wins. It is valid only on `harness:<name>` tasks; elsewhere `atelier check`
+fails with `permissions requires a harness:<name> tool`. `atelier plan` shows
+the level of each agent task. `atelier harness check` shows the mode runs will
+use at the `ATELIER_AGENT_PERMISSIONS` level.
+
+```yaml
+- review:
+    description: Review the change
+    task: Review the last commit and list what must be fixed.
+    tool: harness:codex
+    permissions: read-only
+```
+
+While neither is set, each run prints one line that says agents have full
+permissions. Setting either one, even to `full`, removes that line.
+
+**The levels are not a sandbox.** Atelier only chooses the agent's mode and
+answers the requests the agent sends. An agent can still do what its own mode
+allows without asking: Codex in its `read-only` mode still runs commands that
+only read, inside its own sandbox. The agent's own settings also apply at every
+level. Claude Code loads your user settings and the project's
+`.claude/settings.json` and `.claude/settings.local.json`; tools their allow
+rules pre-approve run without asking, and their hooks run shell commands by
+themselves. A checkout you do not trust can ship such a file, so `read-only`
+does not make it safe to review: check its `.claude/` folder first, or run the
+agent in a container or a virtual machine.
+
+The level and the [interaction policy](#interaction-policy) below work
+together. The level decides what is allowed at all: a request it does not
+allow is rejected without asking anyone. `interaction.permissions` decides who
+answers the rest. With `edits` or `read-only` and a `human`, `supervisor` or
+`hybrid` policy, Atelier takes a read-only mode when the agent has one, so the
+person or supervisor is still asked about each edit.
+
 ## Interaction policy
 
 **By default, agent permission requests are approved automatically.** Set
 `interaction.permissions: human` to ask a person instead, or choose `supervisor`
 or `hybrid` and configure a supervisor. This policy applies to harness tasks.
+It does not limit what the agent may do; the task field `permissions` does that
+(see [Agent permission levels](#agent-permission-levels)).
 
 `interaction` is a conduit-level block. Questions and permissions have separate
 policies:
@@ -275,22 +329,77 @@ per nested sub-task output of that iteration.
 An empty output list never breaks - the loop waits for data on the next
 iteration.
 
+### Failed tries
+
+A try that fails does not end a loop that has `until` or `while`. When a try
+still exits nonzero after its `retries`, `until` and `while` are not checked
+on it: the try counts toward `repeat`, and the next try starts. **If the last
+try still fails, the task fails, whatever `on_exhaust` says**, so a red test
+loop still stops its dependents. Up to 0.12, a failed try ended the loop at
+once and failed the run.
+
+Set `on_failed_try: fail` to keep that older rule on one loop: the first try
+that still fails after its `retries` fails the task, with that try's exit code
+and error, and `atelier run --resume` goes on in the same try. Use it for a
+loop that walks through stages (a work queue, a long goal run), where a
+failure means something is broken and the next pass would only fail again. The
+default is `retry`.
+
+The next try sees what went wrong through `{{loop.previous}}`: a first line
+`[this try failed with exit code N]`, then the try's output, then its error
+text. For a shell step that is its stdout and stderr. For a `tool:conduit`
+body it is the output of the body task that failed (and its stderr, when that
+task is a shell step), then a line that names that task and its error; the exit
+code is the body's as a whole, usually 1. That text is raw, whatever the
+command or the agent printed, so a shell step must read it as
+`"$LOOP_PREVIOUS"` (or as `"$INPUT_<NAME>"` when a loop body gets it
+forwarded), never as `{{loop.previous}}` in the command.
+
+Some failures still end the loop at once:
+
+- With a plain `repeat` and no `until` or `while`, the first failure fails the
+  task.
+- A `tool:hitl` step that gets no answer fails at once, also inside a
+  `tool:conduit` body.
+- A `tool:conduit` body that cannot start, for example because it misses a
+  required input.
+
+An agent that runs out of usage waits for the reset and never spends a try.
+`stagnation_limit` counts failed tries too. If an agent fails inside a
+`tool:conduit` loop, that try fails and the next one starts a fresh body; when
+the loop still fails, `atelier diagnose` names the child task, agent and loop
+iteration.
+
 ### Exhausting the budget
 
 By default a loop that runs all `repeat` iterations **without ever matching its
-predicate completes successfully**. That silence is the most common authoring
+predicate completes successfully**, as long as its last try exited 0, and its
+dependents receive that last output. That silence is the most common authoring
 trap: the loop looks like it worked, and a downstream conditional dependency
-then skips.
+then skips, or an unconditional one (a deploy, a merge) runs on a result that
+never met the condition. `atelier check` and `atelier plan` warn when such a
+loop has dependents:
+
+```
+⚠ looped uses default on_exhaust: complete and may finish after 3 iterations
+without meeting until: output.match(x); dependent tasks tail then run on its
+last output. Set on_exhaust: fail on looped to stop the run.
+```
 
 ```yaml
 on_exhaust: fail    # instead: fail the task, and the flow
 ```
 
-The failure reads:
+Set it whenever a deploy-like step follows the loop. `on_exhaust: complete`
+only covers a last try that exited 0 without meeting the condition; a last try
+that failed fails the task either way. The failure reads:
 
 ```
 flow failed: task 'never' exhausted 3 iterations without matching its loop predicate
 ```
+
+When the last try failed, the reason goes on with `; the last try failed:
+exit=<code> stderr=<error text>`.
 
 ### Stagnation
 
@@ -300,14 +409,20 @@ until: 'output.match(DONE)'
 stagnation_limit: 3     # fail after 3 identical consecutive outputs
 ```
 
-Fails the task with `stagnated: N identical consecutive outputs`. Use it when a
-looping agent can get stuck repeating itself and burning tokens. Must be `>= 2`
-and requires `repeat > 1`.
+Fails the task with `stagnated: N identical consecutive outputs`, even with
+`on_exhaust: complete`, so its dependents do not run. Use it when a looping
+agent can get stuck repeating itself and burning tokens. Must be `>= 2` and
+requires `repeat > 1`.
 
 ### Loop templating
 
 `{{loop.previous}}` is the prior iteration's output, empty before the first
-completes. `{{loop.history}}` renders every prior iteration as numbered blocks:
+completes. After a failed try it holds that try's failure text (see
+[Failed tries](#failed-tries)), not the last good output. So a loop that
+carries state from try to try (a counter, a list of what was tried) should
+read it from `{{loop.history}}`, which keeps the earlier tries too. In a shell
+step read them as `"$LOOP_PREVIOUS"` and `"$LOOP_HISTORY"`.
+`{{loop.history}}` renders every prior iteration as numbered blocks:
 
 ```
 --- iteration 1 ---
@@ -339,11 +454,90 @@ which is what makes a package relocatable:
 
 ```yaml
 task: |
-  python3 "{{conduit_dir}}/scripts/pick.py" "{{inputs.project_dir}}"
+  python3 "{{conduit_dir}}/scripts/pick.py" "$INPUT_PROJECT_DIR"
 ```
 
 A task referencing `{{other.output}}` must list `other` in `depends_on` - the
 reference alone does not create the edge.
+
+## Values in shell steps
+
+In a `tool:bash` step, read values from environment variables, not from
+`{{...}}`. Atelier puts a `{{...}}` value into the command text before bash
+reads it, so bash runs any `$(...)`, `;` or backtick in the value, even inside
+quotes. An input, a human answer or an agent's output can then run commands
+on the machine. Bash never runs what is inside a variable. Keep the variable in
+double quotes, so spaces and `*` in the value stay as they are:
+
+```yaml
+- greet:
+    description: greet someone
+    tool: tool:bash
+    task: echo "hello $INPUT_NAME"
+```
+
+Every shell step gets these variables on top of the normal environment:
+
+| Variable | Value of | Present |
+|---|---|---|
+| `INPUT_<NAME>` | `{{inputs.<name>}}` | for each input, and each HITL answer once given |
+| `OUTPUT_<TASK>` | `{{<task>.output}}` | for each finished task in the step's `depends_on` chain |
+| `LOOP_ITERATION` | the try number, 1, 2, ... | in a looping task (`repeat > 1`) |
+| `LOOP_PREVIOUS` | `{{loop.previous}}` | in a looping task |
+| `LOOP_HISTORY` | `{{loop.history}}` | in a looping task |
+
+- **Names.** Upper case, and every character that is not a letter, a digit or
+  `_` becomes `_`, so input `repo-url` is `$INPUT_REPO_URL`. If two names give
+  the same variable, or one name's variable is the other's `_FILE` form
+  (`report` and `report_file`), the name that comes first in sorted order keeps
+  it, and the other value is only reachable through `{{...}}`.
+- **Large values: the `_FILE` form.** Each value is also written to a file, and
+  `<NAME>_FILE` holds its path, for example `cat "$INPUT_NAME_FILE"`. The plain
+  variables of one step share one budget of 100,000 bytes. Values the command
+  names come first, then the others in name order. A value that does not fit,
+  or that has a NUL byte or a broken character, gets only the file form and
+  leaves `<NAME>` unset. So read the file when a value can be large, for
+  example `< "$OUTPUT_DRAFT_FILE"`. When the command names a variable left
+  unset this way, the step's error output starts with a line that says so. The
+  files are removed when the step ends.
+- **Exact values.** `$OUTPUT_<TASK>` keeps the newline that `echo` printed at
+  the end; an unquoted `{{<task>.output}}` only seemed to drop it.
+- **They win over your environment.** They replace any variable of the same
+  name already set; everything else passes through. A step that read, say,
+  `$INPUT_TOKEN` from your environment now gets the `token` input instead when
+  the conduit has one.
+- **Declare run inputs.** Declare each run input the step reads under
+  `inputs:`, so `atelier run` accepts it. A `tool:hitl` answer needs no
+  declaration: `$INPUT_<NAME>` holds it once the human answers.
+- **Loop bodies.** A step inside a `tool:conduit` loop body does not loop
+  itself, so it gets no `LOOP_*` and no `OUTPUT_<TASK>` of the enclosing
+  conduit. Forward them under the calling task's `inputs:`
+  (`feedback: '{{loop.previous}}'`) and read `"$INPUT_FEEDBACK"`. A variable a
+  step does not get is empty.
+- **Big commands.** A command up to 32,000 bytes runs as `bash -c`. A bigger
+  one runs from a temporary script file; there `$0` names that file. Use
+  `"$BASH"`, not `$SHELL`, to start the running bash again.
+- **Version.** Atelier 0.12 and earlier set none of these variables, so there
+  the step sees them empty. Upgrade before using them.
+
+`{{...}}` still works in shell steps. `atelier check` warns when a shell step
+puts `{{inputs.*}}`, `{{<task>.output}}` or `{{loop.*}}` straight into its
+command, and names the variable to use instead:
+
+```
+⚠ greet: use "$INPUT_NAME" instead of {{inputs.name}}, so the value cannot
+run as a command; a value past the step's 100,000-byte budget comes only as
+"$INPUT_NAME_FILE"
+```
+
+`{{conduit_dir}}` and `{{<task>.workspace}}` are paths you control, so they are
+fine in a command. `{{...}}` is also fine where no shell reads it: agent
+prompts, HITL prompts, `session`, and the `inputs:` map of a `tool:conduit`
+task.
+
+When an input is meant to be shell code, such as a test command, run it
+explicitly with `eval "$INPUT_TEST_COMMAND"`, so a reader sees that this one
+value runs as code.
 
 ## Sinks - what a conduit "returns"
 
@@ -372,8 +566,10 @@ task. If several tasks are sinks, all of their outputs are in scope.
 
 At runtime flow-atelier prints the prompt, asks for each named input on the
 terminal, and saves the answers. Downstream tasks read them as
-`{{inputs.confirm}}` - HITL answers land in the same namespace as conduit
-inputs, so avoid names that collide with declared inputs.
+`{{inputs.confirm}}`, and a downstream shell step as `"$INPUT_CONFIRM"` - HITL
+answers land in the same namespace as conduit inputs, so avoid names that
+collide with declared inputs. Do not declare them under `inputs:` either: that
+makes the run ask for them before it starts.
 
 The run blocks until answered. Over the WebSocket API the same gate is delivered
 as a message and answered by the client.

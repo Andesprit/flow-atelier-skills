@@ -39,11 +39,20 @@ engine.
 | `until and while are mutually exclusive` | both set | keep one |
 | `until requires repeat > 1` | loop predicate on a single-run task | add `repeat: N` |
 | `on_exhaust requires until or while` | `on_exhaust` with no predicate | remove it or add a predicate |
+| `on_failed_try requires until or while` | `on_failed_try: fail` with no predicate | remove it; a plain `repeat` already stops at the first failure |
+| `permissions requires a harness:<name> tool` | `permissions` on a `tool:*` task | remove it; the level only applies to agents |
 | `stagnation_limit requires repeat > 1` / `must be >= 2` | out of range | `>= 2`, and `repeat > 1` |
 | `invalid regex in dependency` | the regex does not compile | check escaping; quote the YAML string |
 | `dependency must end with ')'` | malformed condition | the regex is everything to the **last** `)` |
 | `unknown template expression: 'x'` | `{{x}}` is not `inputs.*`, `<task>.output`, `loop.*`, or `conduit_dir` | fix the expression |
 | `missing input: 'name'` | required input not passed | `--input name=value`, or give it a `default` |
+
+`atelier check` also prints warnings that do not fail the check:
+
+| Warning | Cause | Fix |
+|---|---|---|
+| `use "$INPUT_NAME" instead of {{inputs.name}}` (or `$OUTPUT_<TASK>`, `$LOOP_PREVIOUS`) | a shell step pastes a value into its command, where it can run as code | read the variable it names, in double quotes; see [Values in shell steps](conduit-yaml.md#values-in-shell-steps) |
+| `uses default on_exhaust: complete and may finish after N iterations` | a loop with dependents completes even when its condition is never met | set `on_exhaust: fail` on it, or raise `repeat` |
 
 ## A task was skipped and you did not expect it
 
@@ -56,8 +65,9 @@ Skipping is normal control flow, not an error. Causes, in order of likelihood:
    drifts - a prompt asking for `VERDICT: DONE` may have produced `Verdict:
    done`. Loosen the regex or tighten the prompt.
 2. **A loop exhausted without matching.** By default that **completes**
-   successfully, so the downstream gate skips and nothing looks wrong. This is
-   the most common trap. Add `on_exhaust: fail`.
+   successfully when its last try exited 0, so the downstream gate skips and
+   nothing looks wrong. This is the most common trap. Add `on_exhaust: fail`.
+   (A loop whose last try failed fails, whatever `on_exhaust` says.)
 3. **The upstream task was itself skipped or failed.** Skips propagate down the
    whole subtree.
 4. **A template referenced an unavailable task.** `{{other.output}}` where
@@ -100,9 +110,14 @@ on a harmless shell-only flow first, see the
 
 Other failure sources:
 
+- **`...; the last try failed: exit=<code> stderr=<text>`** after
+  `exhausted N iterations` - the last try of an `until`/`while` loop failed, so
+  the task failed whatever `on_exhaust` says. Earlier failed tries only used up
+  tries. Read the error text, or each try in `atelier logs <flow_id>`.
 - **`stagnated: N identical consecutive outputs`** - a looping task produced the
   same output N times. Usually an agent stuck in a rut, or a bash step whose
-  state never changes.
+  state never changes. Failed tries count too, so the same error several times
+  in a row also stagnates.
 - **A task timed out.** The conduit `timeout` (default 3600s) applies per task
   unless the task overrides it. Nested conduits have their own budget - a parent
   looping a 1h child 10 times inside a 2h parent budget will not get 10

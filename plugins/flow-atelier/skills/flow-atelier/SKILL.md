@@ -61,13 +61,15 @@ timeout: 3600                # seconds per task (default 3600)
 max_concurrency: 3           # parallel tasks within this conduit (default 3)
 
 inputs:
-  branch: Branch to deploy               # string shorthand = description
+  repo_url: The git repo URL             # string shorthand = description
+  branch: Branch to deploy
   env: {description: Target, default: staging}   # a default makes it optional
 
 tasks:
   - clone_repo:                          # task names: [A-Za-z0-9_] - NO hyphens
       description: Clone
-      task: "git clone -b {{inputs.branch}} $REPO /tmp/build"
+      # a shell step reads values from env vars, never from {{...}}
+      task: 'git clone -b "$INPUT_BRANCH" "$INPUT_REPO_URL" /tmp/build'
       tool: tool:bash
       depends_on: []
 
@@ -78,7 +80,7 @@ tasks:
       depends_on: [clone_repo]
       repeat: 3                          # loop up to 3 times...
       until: 'output.match(PASS)'        # ...break as soon as output matches
-      on_exhaust: fail                   # fail if 3 runs never matched
+      on_exhaust: fail                   # fail if no run printed PASS
 
   - code_review:
       description: AI review
@@ -86,6 +88,7 @@ tasks:
         Review /tmp/build/src for security issues.
         End with exactly one of: VERDICT: APPROVE / VERDICT: REJECT
       tool: harness:claude-code
+      permissions: read-only             # full (default) | edits | read-only
       depends_on: [clone_repo]
       retries: 2
       retry_backoff: 5
@@ -149,6 +152,30 @@ its own Git checkout with `--worktree <task>`. See `references/task-worktrees.md
 
 A missing `{{inputs.x}}` **fails** the task immediately. A reference to a skipped
 or incomplete task **skips** the referencing task.
+
+### Values in shell steps
+
+**Never put `{{inputs.*}}`, `{{<task>.output}}` or `{{loop.*}}` in a `tool:bash`
+command.** Atelier pastes a `{{...}}` value into the command text before bash
+reads it, so bash runs any `$(...)`, `;` or backtick in the value, even inside
+quotes. An input, a human answer or an agent's output can then run commands.
+Read the value from an environment variable instead, in double quotes:
+
+| Variable | Holds | Set in |
+|---|---|---|
+| `"$INPUT_<NAME>"` | `{{inputs.<name>}}`, including a HITL answer | every shell step |
+| `"$OUTPUT_<TASK>"` | `{{<task>.output}}` | shell steps that have `<task>` in their `depends_on` chain |
+| `"$LOOP_PREVIOUS"`, `"$LOOP_HISTORY"`, `$LOOP_ITERATION` | `{{loop.previous}}`, `{{loop.history}}`, the try number | looping shell steps (`repeat > 1`) |
+| `"$<NAME>_FILE"` | path of a file with the same value, e.g. `"$OUTPUT_DRAFT_FILE"` | every variable above |
+
+Use the `_FILE` form when a value can pass 100,000 bytes: past that budget the
+plain variable is unset. Names are upper case, other characters become `_`
+(input `repo-url` is `$INPUT_REPO_URL`). `{{conduit_dir}}` and
+`{{<task>.workspace}}` are paths you control and stay fine in a command, and
+`{{...}}` stays fine in agent prompts and in `inputs:` maps. `atelier check`
+warns about the unsafe form and names the variable to use. Atelier 0.12 and
+earlier set none of these variables, so there they are empty: upgrade first.
+Full rules: `references/conduit-yaml.md` *Values in shell steps*.
 
 ## Command map
 
@@ -253,14 +280,25 @@ always project-local, written under the directory you ran `atelier` from.
 
 ## Traps worth knowing up front
 
-- **Agent permissions default to automatic approval.** Set `interaction.permissions`
-  to `human`, `supervisor` or `hybrid` to change this; see the interaction policy
-  in `references/conduit-yaml.md`.
+- **`{{...}}` in a shell command can run as code.** Read `"$INPUT_<NAME>"`,
+  `"$OUTPUT_<TASK>"` and `"$LOOP_PREVIOUS"` instead; see *Values in shell steps*.
+- **Agents run with full permissions by default.** They can edit any file and
+  run any command, and every permission request is approved. Set
+  `permissions: edits` or `permissions: read-only` on a harness task, or
+  `ATELIER_AGENT_PERMISSIONS` for every agent task; the task field wins. The
+  levels are not a sandbox. `interaction.permissions` (`human`, `supervisor`,
+  `hybrid`) is a different, conduit-level field: it decides who answers the
+  requests the level allows. See `references/conduit-yaml.md`.
 - **Task names take no hyphens.** `[A-Za-z0-9_]` only. Conduit names allow them.
   `my-task` is a validation error; `my_task` is fine.
 - **A loop that never matches its predicate still completes.** `repeat: 5` with a
-  never-matching `until` runs 5 times and succeeds. Add `on_exhaust: fail` when
-  exhausting the budget should be an error.
+  never-matching `until` runs 5 times and succeeds, as long as the last try
+  exited 0. Add `on_exhaust: fail` when exhausting the budget should be an
+  error, and always when a deploy-like step depends on the loop.
+- **A failed try does not end an `until`/`while` loop.** It counts as a try, and
+  the next try sees its failure text in `{{loop.previous}}`. If the last try
+  still fails, the task fails whatever `on_exhaust` says. Carry state across
+  tries through `{{loop.history}}`, not `{{loop.previous}}`.
 - **`outputs.yaml` keeps only the last iteration** of a looped task. Skipped
   tasks record `null`.
 - **A conduit's "output" is its sink tasks** - the ones nothing else depends on.

@@ -1,9 +1,10 @@
 # Recipes for common jobs
 
-For Atelier 0.12.0. Start in a Git project with Atelier installed. Each job takes
-three steps: **save** its YAML at the paths shown (create the directories),
-**check**, then **plan or run**. For a two-file recipe, save both files before
-checking. `atelier check` validates every conduit saved in the project and runs
+For the Atelier release after 0.12.0: its shell steps read values from
+environment variables, which 0.12.0 leaves empty. Start in a Git project with
+Atelier installed. Each job takes three steps: **save** its YAML at the paths
+shown (create the directories), **check**, then **plan or run**. For a two-file
+recipe, save both files before checking. `atelier check` validates every conduit saved in the project and runs
 nothing; `atelier plan` also starts no agents.
 
 | Your job | Recipe |
@@ -15,17 +16,22 @@ nothing; `atelier plan` also starts no agents.
 | Try a loop without agent logins | [Bash demo](#bash-only-loop-demo) |
 | Run a status report every night | [Nightly job](#run-a-job-every-night) |
 
-**Verification:** every conduit below passed `atelier check` and `atelier plan`.
-The bash demo, both approval answers, and the nightly conduit were run on 0.12.0.
-The schedule was added, listed and removed without a daemon. The agent recipes
+**Verification:** every conduit below passed `atelier check` and `atelier plan`
+with no warnings on a development build of the release after 0.12.0. On that
+build the bash demo, both approval answers, the nightly conduit, and the test
+loop with a passing test command (so no agent was called) were run. On 0.12.0
+the schedule was added, listed and removed without a daemon. The agent recipes
 were **not run with real agents**; validation does not prove their judgments or
 repairs will succeed. Before running those, have the named agents installed and
 logged in (`atelier harness check codex` and `atelier harness check claude-code`).
 
 Run these recipes one at a time in a dedicated checkout. They use named scratch
 files under `.atelier/recipe-*`; the review loop resets its feedback on a new
-run. Inputs in agent prompts describe the job; `test_command` is trusted shell
-code, executed as supplied. [Field and loop details](conduit-yaml.md).
+run. Inputs in agent prompts describe the job. Shell steps read inputs from
+environment variables such as `"$INPUT_TEST_COMMAND"`, never from `{{...}}`
+([why](conduit-yaml.md#values-in-shell-steps)). `test_command` is the one
+input meant as shell code: the recipe runs it with an explicit `eval`, so only
+pass a command you trust. [Field and loop details](conduit-yaml.md).
 
 ## Review until another agent approves
 
@@ -33,8 +39,8 @@ Use this for an existing working-tree change that needs repair and independent
 review. Codex works; Claude Code reviews the resulting diff. Review findings go
 in `.atelier/recipe-review.md` so the next worker turn can act on them. Neither
 agent commits. Only the reviewer emits a verdict; the worker must never emit one.
-Agent permission requests go to a human through `permissions: human` in the
-child conduit; keep the run in a terminal. [Interaction policy](conduit-yaml.md#interaction-policy).
+Agent permission requests go to a human through `interaction.permissions: human`
+in the child conduit; keep the run in a terminal. [Interaction policy](conduit-yaml.md#interaction-policy).
 
 Save `.atelier/conduits/review_round/conduit.yaml`:
 
@@ -107,7 +113,9 @@ atelier run review_until_approved
 
 Expect at most three worker/reviewer rounds, ending with `VERDICT: APPROVE`.
 A review that still requests changes after round three fails the parent flow;
-it cannot silently count an exhausted loop as approval. Nested loop predicates
+it cannot silently count an exhausted loop as approval. An agent that fails in
+a round uses up that round, and the next round starts; if round three fails,
+the parent fails too. Nested loop predicates
 inspect all completed child-task outputs, so reserving the verdict for the
 reviewer matters. Read the diff and checks yourself before accepting the work.
 
@@ -119,8 +127,12 @@ diagnose command it prints; the feedback file retains the last review findings.
 Use this when one agent should propose an approach and a different agent should
 challenge it, without implementing it. The draft is an explicit file handoff,
 so this does not depend on session continuation or a shared harness.
-Agent permission requests go to a human through `permissions: human`.
-[Interaction policy](conduit-yaml.md#interaction-policy).
+Agent permission requests go to a human through `interaction.permissions: human`.
+The reviewer also has `permissions: read-only`, so Atelier rejects every
+permission request it sends, such as to edit a file or run a command. This is
+not a sandbox.
+[Interaction policy](conduit-yaml.md#interaction-policy),
+[permission levels](conduit-yaml.md#agent-permission-levels).
 
 Save `.atelier/conduits/draft_review/conduit.yaml`:
 
@@ -143,6 +155,7 @@ tasks:
   - review:
       description: Review the draft independently
       tool: harness:claude-code
+      permissions: read-only
       depends_on: [draft]
       task: |
         Review .atelier/recipe-draft.md against the project and this request:
@@ -220,8 +233,8 @@ The parent repeats the whole round up to five times. A nonzero test exit is
 converted to a red marker so the fix task can run; the parent fails if no test
 ever turns green. Test logs are indented so a marker printed by a test cannot
 masquerade as the wrapper's verdict.
-Agent permission requests go to a human through `permissions: human` in the
-child. [Interaction policy](conduit-yaml.md#interaction-policy).
+Agent permission requests go to a human through `interaction.permissions: human`
+in the child. [Interaction policy](conduit-yaml.md#interaction-policy).
 
 Save `.atelier/conduits/test_fix_round/conduit.yaml`:
 
@@ -237,7 +250,7 @@ tasks:
       description: Capture the test exit status without aborting the round
       tool: tool:bash
       task: |
-        if ({{inputs.test_command}}) > .atelier/recipe-test.log 2>&1; then
+        if (eval "$INPUT_TEST_COMMAND") > .atelier/recipe-test.log 2>&1; then
           sed 's/^/  /' .atelier/recipe-test.log
           printf '\nATELIER_TESTS_GREEN\n'
         else
@@ -259,7 +272,7 @@ tasks:
       tool: tool:bash
       depends_on: [fix]
       task: |
-        if ({{inputs.test_command}}) > .atelier/recipe-test.log 2>&1; then
+        if (eval "$INPUT_TEST_COMMAND") > .atelier/recipe-test.log 2>&1; then
           sed 's/^/  /' .atelier/recipe-test.log
           printf '\nATELIER_TESTS_GREEN\n'
         else
@@ -299,8 +312,9 @@ The default fits Python `unittest`; use your project's actual suite (for example
 tests is still green to this recipe, so confirm it runs the intended tests.
 Expect `ATELIER_TESTS_GREEN` only after a test exits 0. When the initial test is
 green, `fix` and `verify` skip and the parent stops without calling an agent.
-A repair on the last round still gets its verification test. Agent failure
-fails the child immediately; five red rounds fail the parent. The final test
+A repair on the last round still gets its verification test. An agent failure
+fails that round's child flow; the parent counts it as a round and starts the
+next one. Five red or failed rounds fail the parent. The final test
 log stays at `.atelier/recipe-test.log`.
 
 If it fails: `atelier diagnose latest`. Follow a suggested child-diagnose
