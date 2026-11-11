@@ -10,7 +10,10 @@ the entry point the Flow Atelier visual frontend connects to - the designer lays
 a conduit out by dependency depth, runs stream to a dashboard including HITL
 gates, and every flow gets a live run page (see below).
 
-`--port 0` picks an ephemeral port. `--cors-origin` is repeatable.
+`--port 0` picks an ephemeral port. `--cors-origin URL` (repeatable) lets
+another page's origin call the API; by default only the server's own pages
+may. To develop the UI with the Vite dev server, start
+`atelier serve --cors-origin http://localhost:5173`.
 `--idle-exit MINUTES` stops the server after that long with no open page, no
 request, no running flow in its directory and no scheduled run in progress;
 without it the server runs until stopped.
@@ -47,7 +50,8 @@ started from the CLI, the dashboard or the scheduler.
 `atelier run`, `--resume`, `--again` and `atelier ask` print the link when the
 flow starts: `· run page http://127.0.0.1:8000/runs/<flow_id>`. The base comes
 from `ATELIER_SERVE_URL` (default `http://127.0.0.1:8000`); the CLI does not
-check that a server is up.
+check that a server is up. Export `ATELIER_SERVE_URL` in the shell: since
+0.14.0 a `.env` value is ignored.
 
 The page loads only while `atelier serve` runs from the **same directory** as
 the run, because the server reads flows from its own `./.atelier/`. A quick
@@ -88,21 +92,32 @@ equivalent to a shell on that machine.**
 `atelier serve` binds `127.0.0.1:8000` and needs no token. Two guards stop a web
 page you happen to visit from driving it:
 
-- **Origin.** CORS is restricted to localhost origins, never `*`. CORS does not
-  cover WebSockets, so both sockets also check `Origin` themselves: a script
-  with no `Origin` passes, a browser page must be local, a `--cors-origin`, or
-  the server's own UI.
+- **Origin.** Since 0.14.0 only pages this server served may call the API,
+  plus origins you name with `--cors-origin`, such as the Vite dev server
+  (`--cors-origin http://localhost:5173`). A page on any other site or local
+  port, such as another tool's local UI, gets `403`. A client that sends no
+  `Origin`, such as the CLI, a script or `curl`, is not a page and passes.
+  CORS does not cover WebSockets, so both sockets apply the same rule
+  themselves: a page must be the server's own UI or a `--cors-origin`, and
+  any other page, a local one too, is refused with close code `1008`. With `ATELIER_API_TOKEN` set, the
+  token does this job instead.
 - **Host.** Only `localhost`, `127.0.0.1` and `::1` are accepted as the `Host`
   header. This is what stops DNS rebinding, where an attacker's page resolves its
   own hostname to `127.0.0.1` so the browser treats the request as same-origin
   and sends no `Origin` for CORS to reject. Any other `Host` gets
   `400 Invalid host header`.
 
+These guards are for web pages. Any program running as you can still call the
+loopback API without a token. Set `ATELIER_API_TOKEN` when other users share
+the machine, or when a program you do not trust runs there.
+
 ### Anywhere else
 
 Before binding a non-loopback address, set `ATELIER_API_TOKEN`. Every REST
 request then needs `Authorization: Bearer <token>`, and WebSocket connections
-need `?token=<token>`. Build the UI with a matching `VITE_API_TOKEN`.
+need `?token=<token>`. Build the UI with a matching `VITE_API_TOKEN`. Export
+the token in the shell: since 0.14.0 a `.env` value is ignored, and agent and
+shell steps no longer receive it.
 
 `atelier serve` **refuses to start** on a non-loopback host when the token is
 unset:

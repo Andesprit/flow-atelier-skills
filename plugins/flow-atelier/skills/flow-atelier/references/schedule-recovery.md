@@ -15,7 +15,7 @@ marker, so it tells you nothing about the daemon.
 | Who fires the schedules | Store it reads |
 |---|---|
 | `atelier schedule daemon` (CLI) | `<its working dir>/.atelier/schedules/`, unless `ATELIER_ATELIER_DIR` is set in its environment or in a `.env` in its working dir |
-| `atelier serve` | `~/.atelier/schedules/`, unless `ATELIER_GLOBAL_ATELIER_DIR` is set the same way |
+| `atelier serve` | `~/.atelier/schedules/`, unless `ATELIER_GLOBAL_ATELIER_DIR` is set in its environment. Since 0.14.0 a `.env` cannot set it; Atelier ignores that line and prints `ignored ATELIER_GLOBAL_ATELIER_DIR from ./.env` |
 
 A schedule added with `atelier schedule add` in a project goes to the project
 store, so a server never sees it, and the other way round.

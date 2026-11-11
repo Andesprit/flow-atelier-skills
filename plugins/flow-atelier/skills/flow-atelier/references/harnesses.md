@@ -68,6 +68,24 @@ Failures exit non-zero and include the tail of the agent's own stderr, which is
 where a failing agent explains itself. Run this before debugging a conduit - a
 harness task that fails for auth reasons looks like a conduit problem and is not.
 
+With `ATELIER_AGENT_PERMISSIONS` set to `edits` or `read-only`, the modes line
+also says which mode runs will use. It says `runs fail` when the agent cannot
+be held to that level: it offers no session modes, or only modes Atelier does
+not know. Since 0.14.0 such a task fails before its prompt is sent; see
+[Agent permission levels](conduit-yaml.md#agent-permission-levels).
+
+```bash
+ATELIER_AGENT_PERMISSIONS=read-only atelier harness check opencode
+```
+
+A passing check does not prove that the login works for real prompts. Since
+0.14.0 a turn with no tool calls fails when the agent returns nothing, or only
+a short login, account or usage-limit message, for example
+`agent returned no answer` or
+`agent reported an error instead of an answer: Not logged in`. Before 0.14.0
+such a turn passed, and the message became the task's output. A usage limit
+said in words now gets the normal wait for the reset.
+
 ## Choosing an agent for one run
 
 Use this when a workflow names an agent you cannot or do not want to use today.
@@ -177,7 +195,7 @@ runs as they were.
 Something private, a fork, a local build:
 
 ```bash
-ATELIER_HARNESSES='{"mine":["/opt/my-agent","--acp"]}'
+export ATELIER_HARNESSES='{"mine":["/opt/my-agent","--acp"]}'
 ```
 
 Each entry registers `harness:<name>` as a first-class tool driven by the same
@@ -188,14 +206,21 @@ To pin one of the five harnesses that predate the registry to a specific argv,
 use its own variable instead:
 
 ```bash
-ATELIER_CLAUDE_LAUNCH_CMD=["npx","-y","@agentclientprotocol/claude-agent-acp@0.62.0"]
-ATELIER_CODEX_LAUNCH_CMD=["npx","-y","@agentclientprotocol/codex-acp@1.1.7"]
-ATELIER_OPENCODE_LAUNCH_CMD=["opencode","acp"]
-ATELIER_COPILOT_LAUNCH_CMD=["npx","-y","@github/copilot@1.0.75","--acp"]
-ATELIER_CURSOR_LAUNCH_CMD=["cursor-agent","acp"]
+export ATELIER_CLAUDE_LAUNCH_CMD='["npx","-y","@agentclientprotocol/claude-agent-acp@0.62.0"]'
+export ATELIER_CODEX_LAUNCH_CMD='["npx","-y","@agentclientprotocol/codex-acp@1.1.7"]'
+export ATELIER_OPENCODE_LAUNCH_CMD='["opencode","acp"]'
+export ATELIER_COPILOT_LAUNCH_CMD='["npx","-y","@github/copilot@1.0.75","--acp"]'
+export ATELIER_CURSOR_LAUNCH_CMD='["cursor-agent","acp"]'
 ```
 
-These override the registry. Both forms take a JSON array of argv.
+These override the registry. Both forms take a JSON array of argv. Keep the
+single quotes, so the shell passes the JSON as it is.
+
+**Set them in your shell, not in `.env`.** These settings choose the command
+Atelier runs, and the `.env` of the folder you run in may come from a
+repository you just cloned. Since 0.14.0 Atelier ignores them in that `.env`
+and prints `ignored ATELIER_<NAME> from ./.env` on stderr. An agent you
+registered in `.env` then shows up as unknown.
 
 ## One-turn vs interactive
 
@@ -220,6 +245,10 @@ Then it keeps the conversation open. The agent replies, the reply streams to you
 terminal, and if `[ATELIER_DONE]` has not appeared, flow-atelier asks **you** for
 the next message to send back. The loop ends when the token shows up. The token
 is configurable via `ATELIER_DONE_MARKER`.
+
+At that prompt, Enter submits your message and Escape then Enter (Alt+Enter)
+adds a new line. Atelier 0.14.0 prints the hint `Alt+Enter to submit`; it is
+wrong. 0.14.1 prints the correct one. When stdin is not a terminal, each message is one line of stdin.
 
 Permission requests are approved automatically by default, within the task's
 `permissions` level. With `interaction.permissions: human`, a request the level
@@ -257,7 +286,9 @@ are running - a failure cancels them.
 
 **Retries are for crashes, `repeat` is for iteration.** `retries: 2` re-runs a
 task that *failed*; `repeat` loops one that *succeeded*. An agent that answers
-badly has still succeeded, so shape that with `repeat` + `until`.
+badly has still succeeded, so shape that with `repeat` + `until`. The exception
+is a turn with no tool calls that returns nothing, or only a login, account or
+usage-limit message: since 0.14.0 that turn fails.
 
 ## Streaming
 
