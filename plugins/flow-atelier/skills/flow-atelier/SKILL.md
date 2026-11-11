@@ -107,7 +107,7 @@ tasks:
       description: Run the deploy sub-conduit
       task: deploy_to_env                # the conduit name, not a command
       tool: tool:conduit
-      depends_on: [approve]
+      depends_on: ["approve.output.match(confirm: 'yes')"]   # only on a yes
       inputs: {target_env: "{{inputs.env}}"}
 
   - rollback:
@@ -120,6 +120,8 @@ tasks:
 
 `approve` and `rollback` are mutually exclusive branches. **An unmet condition
 skips a task, it does not fail it** - and everything downstream skips too.
+A `tool:hitl` gate finishes whatever the answer, so `deploy` checks the answer:
+a plain `depends_on: [approve]` would deploy after `no` too.
 
 ### Tools
 
@@ -179,7 +181,7 @@ Full rules: `references/conduit-yaml.md` *Values in shell steps*.
 
 ## Command map
 
-Commands for atelier 0.12.0, grouped. Flags and exact behavior: `references/cli.md`.
+Commands for atelier 0.14.0, grouped. Flags and exact behavior: `references/cli.md`.
 
 ```
 authoring    init · create · compose · check · plan · show · schema
@@ -256,8 +258,9 @@ starts, and again in your final report.
    `200` is ready. `401` means the server has `ATELIER_API_TOKEN` set; the page
    asks for the token once. `404` means the server on that port belongs to
    another directory: start one here with `--port <free port>`, change the port
-   in the link, and set `ATELIER_SERVE_URL=http://127.0.0.1:<port>` for later
-   runs so the printed link matches.
+   in the link, and `export ATELIER_SERVE_URL=http://127.0.0.1:<port>` in the
+   shell for later runs so the printed link matches. Atelier 0.14.0 ignores
+   this setting in a `.env` file.
 
 No `run page` line means the installed atelier has no run page (0.7.0 and
 earlier). Say so and suggest an upgrade instead of sending a dead link.
@@ -289,6 +292,24 @@ always project-local, written under the directory you ran `atelier` from.
   levels are not a sandbox. `interaction.permissions` (`human`, `supervisor`,
   `hybrid`) is a different, conduit-level field: it decides who answers the
   requests the level allows. See `references/conduit-yaml.md`.
+- **`edits` and `read-only` fail when the agent cannot be held to them.** An
+  agent with no session modes, or only modes Atelier does not know (such as
+  opencode's `build`), fails before the prompt is sent. To test an agent
+  first, run `ATELIER_AGENT_PERMISSIONS=read-only atelier harness check <name>`:
+  its modes line says `runs fail` for such an agent. To run anyway with a
+  warning, set `ATELIER_ALLOW_UNENFORCED_PERMISSIONS=1` in the shell, not in
+  `.env`.
+- **A human gate finishes whatever the answer.** A step with a plain
+  `depends_on: [approve]` also runs after `no` or an empty answer. Depend on
+  the answer instead: `"approve.output.match(confirm: 'yes')"`. `atelier check`
+  warns about a plain dependency on a gate whose name or inputs mention
+  approve or confirm.
+- **A `.env` file cannot choose what Atelier runs.** Atelier 0.14.0 ignores
+  these in the `.env` of the folder you run in: the `ATELIER_*_LAUNCH_CMD`
+  settings, `ATELIER_HARNESSES`, `ATELIER_GLOBAL_ATELIER_DIR`,
+  `ATELIER_API_TOKEN`, `ATELIER_SERVE_URL`, and `ATELIER_AGENT_PERMISSIONS=full`
+  (a `.env` may still lower the level). Export them in the shell. Atelier
+  prints `ignored ATELIER_<NAME> from ./.env` for each one.
 - **Task names take no hyphens.** `[A-Za-z0-9_]` only. Conduit names allow them.
   `my-task` is a validation error; `my_task` is fine.
 - **A loop that never matches its predicate still completes.** `repeat: 5` with a

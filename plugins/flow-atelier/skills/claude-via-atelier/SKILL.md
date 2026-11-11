@@ -18,6 +18,9 @@ Source: <https://github.com/Andesprit/flow-atelier>
 Codex is the caller throughout; any agent that can drive a PTY plays the same
 role.
 
+This workflow needs Atelier 0.14.0 or newer (`atelier --version`). Older
+releases have no `atelier ask --permissions`.
+
 ## Workflow
 
 1. Resolve the absolute working directory.
@@ -33,16 +36,33 @@ role.
    - Ask Claude to request clarification when needed and not to signal completion
      until it has performed and checked the work.
    - Do not forward secrets or credentials. Flow logs are unredacted.
+   - For a read-only task, put the diff, or the commits and files to read, in
+     the prompt. At `read-only` Atelier rejects every permission request Claude
+     sends, such as most shell commands; only what Claude Code does without
+     asking still runs. Do not count on Claude running `git diff`.
 
 3. Start Claude through Flow Atelier in a PTY:
 
    ```bash
-   atelier ask "<delegation prompt>" --path "<absolute working directory>"
+   atelier ask "<delegation prompt>" --path "<absolute working directory>" --permissions read-only
    ```
 
    Pass the prompt as one safely quoted argument. Never allow prompt text to
    become shell syntax. Keep the command attached to a live terminal so Claude
    can hand the turn back.
+   - Always pass `--permissions`. Use `read-only` to review, consult or
+     analyse. Use `edits` when Claude must change files: it can then read and
+     change files, but not run commands such as tests, so you run them in step
+     6. Use `full` only when Claude must run commands and the user accepts
+     that it can run any command. Without the flag, Claude gets
+     `ATELIER_AGENT_PERMISSIONS`, else `full`.
+   - The levels are not a sandbox. Claude Code still applies its user settings
+     and the project's `.claude/settings.json` and
+     `.claude/settings.local.json`: their allow rules and hooks run without
+     asking Atelier.
+   - If the run says `No such option: --permissions`, the installed Atelier is
+     older than 0.14.0. Upgrade it, or ask the user before you run Claude
+     without a level.
    - An explicit request to use, consult, delegate to, or pair with Claude
      authorizes sending task-relevant, non-secret context to the local Claude
      harness. Cite that authorization if sandbox escalation is required.
@@ -55,9 +75,12 @@ role.
      whenever the answer is discoverable.
    - Ask the user only when Claude exposes a material product choice, missing
      authority, secret, or irreversible decision that belongs to them.
-   - Send the answer to the running PTY. For the multiline prompt, submit with
-     Alt+Enter; when controlling a PTY programmatically, send Escape and Enter
-     separately if a combined sequence does not submit.
+   - Type the answer in the running PTY and press Enter: Enter submits.
+     Escape then Enter (Alt+Enter) adds a new line inside the answer. Atelier
+     0.14.0 shows the hint `Alt+Enter to submit` above the prompt. The hint is
+     wrong; ignore it.
+   - Without a terminal, `atelier ask` reads each answer as one line of piped
+     stdin. Prefer a PTY, so you read each question before you answer it.
    - Continue until the flow completes. Do not leave Claude waiting for input.
    - `atelier ask` prints `· run page <url>` when the flow starts. Give the user
      that link so they can follow Claude's work live, as the flow-atelier
@@ -65,6 +88,9 @@ role.
 
 5. Recover Claude's final statement from the recorded flow.
    - Capture the `flow_id` printed by `atelier ask`.
+   - Read the exit code of `atelier ask`: 0 means the flow completed, 1 means
+     it failed, and 143 means it was stopped (`atelier stop` or SIGTERM). Only
+     0 means Claude finished.
    - Run `atelier outputs <flow_id> --json`. The `chat` value is Claude's final
      turn with the internal completion marker removed.
    - Use `atelier logs <flow_id> --json` only when the earlier conversation is
@@ -114,6 +140,11 @@ not present Claude's words as Codex's independent verification.
 - If `atelier ask` is unavailable, run `atelier --version` and
   `atelier harness check claude-code` to distinguish installation from harness
   authentication problems.
+- A Claude turn with no tool calls that returns nothing, or only a login,
+  account or usage-limit message, fails the run. The error starts with
+  `agent returned no answer` or `agent reported an error instead of an answer`.
+  This is not Claude's answer. Run `atelier harness check claude-code` and ask
+  the user to log in to Claude Code if needed.
 - Never fabricate a Claude response. State that delegation failed and why.
 - If the user required delegation, ask before proceeding without Claude.
 - Do not start a second delegation for the same task while one is already

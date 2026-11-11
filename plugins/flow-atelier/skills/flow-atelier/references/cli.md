@@ -1,6 +1,6 @@
 # The `atelier` CLI - every command
 
-Command names and flags below target atelier 0.12.0.
+Command names and flags below target atelier 0.14.0.
 
 Global: `atelier --version`, `atelier --install-completion`,
 `atelier --show-completion`.
@@ -110,6 +110,16 @@ flow_id: 20260727_0eb21391_loopdemo
 On failure it names the failing task and suggests the resume command. First run
 `atelier diagnose <flow_id>` to understand the cause before resuming.
 
+`atelier run` and `atelier ask` exit 0 when the flow completed, 1 when it
+failed, and 143 when it was stopped by `atelier stop` or another SIGTERM
+(before 0.14.0 a stopped run exited 0). A script must not read 143 as success.
+
+`atelier stop` sends the stop signal and waits up to 15 seconds. It exits 0
+once the flow is no longer running. It exits 1 when it cannot stop the flow
+(already finished, runner gone, another host, or inside a server or scheduler
+process) and, since 0.14.0, when the flow is still running after the wait:
+the work may still be going, so check `atelier status <flow_id>` again.
+
 `wait` starts nothing and changes nothing. Its default timeout is 60 seconds.
 It exits 0 only for a saved `completed` run, printing just the resolved flow id
 to stdout; it exits 1 for failure, stop or a dead runner, 124 on timeout, and
@@ -122,8 +132,13 @@ flow_id=$(atelier wait latest --timeout 60) && atelier outputs "$flow_id"
 For an interactive agent conversation, use
 `atelier ask "<prompt>" --path /abs/path` in a live terminal. `--path` / `-p` is
 required; `--harness NAME[:MODEL[:EFFORT]]` selects the agent (default
-`claude-code`). Answer its questions until it finishes. The agent runs with full
-permissions unless `ATELIER_AGENT_PERMISSIONS` sets another level.
+`claude-code`). `--permissions full|edits|read-only` sets what the agent may do
+without asking; without it the agent gets `ATELIER_AGENT_PERMISSIONS`, else
+`full`. A level the agent cannot be held to fails the run before the prompt is
+sent (see [permission levels](conduit-yaml.md#agent-permission-levels)).
+Answer its questions until it finishes: Enter submits an answer, and Escape then
+Enter adds a new line. The hint `Alt+Enter to submit` that 0.14.0 prints is
+wrong. When stdin is not a terminal, each answer is one line of stdin.
 
 ## Inspecting
 
@@ -225,9 +240,12 @@ atelier serve [--host 127.0.0.1] [--port 8000] [--reload-interval 30.0] \
               [--cors-origin URL]... [--log-level INFO] [--idle-exit MINUTES]
 ```
 
-`--port 0` picks an ephemeral port. `--cors-origin` is repeatable. See
-`serve-and-api.md` for endpoints and the security rules that govern non-loopback
-binds.
+`--port 0` picks an ephemeral port. By default only pages this server serves
+may call its API; since 0.14.0 a page on another local port gets `403`.
+`--cors-origin` (repeatable) names another page's origin that may call it, for
+example `--cors-origin http://localhost:5173` for the Vite dev server. The CLI,
+scripts and `curl`, which send no `Origin`, still work. See `serve-and-api.md`
+for endpoints and the security rules that govern non-loopback binds.
 
 ## Upgrade Atelier
 
@@ -242,23 +260,33 @@ For pip/uv-managed installs this command exits with guidance to use
 
 ## Environment variables
 
-All prefixed `ATELIER_`, readable from a `.env` file in the working directory.
+All are prefixed `ATELIER_`. Most can also come from a `.env` file in the
+working directory. The ones marked **shell only** must be exported in your
+shell environment: since 0.14.0 Atelier ignores them in that `.env`, because
+the folder may be a repository you just cloned. A `.env` may lower
+`ATELIER_AGENT_PERMISSIONS` but not set it to `full`. For each ignored line,
+Atelier prints on stderr:
+
+```
+[flow-atelier] ignored ATELIER_HARNESSES from ./.env: set it in your shell environment instead; the .env of the folder you run in cannot set it
+```
 
 | Variable | Default | Controls |
 |---|---|---|
 | `ATELIER_ATELIER_DIR` | `./.atelier` | base dir for conduits and flows |
-| `ATELIER_GLOBAL_ATELIER_DIR` | `~/.atelier` | global conduit store |
+| `ATELIER_GLOBAL_ATELIER_DIR` | `~/.atelier` | global conduit store; **shell only** |
 | `ATELIER_DEFAULT_TIMEOUT` | `3600` | per-task timeout in seconds |
 | `ATELIER_DEFAULT_MAX_CONCURRENCY` | `3` | parallel tasks per conduit |
 | `ATELIER_LOOP_HISTORY_LIMIT` | `10` | iterations rendered by `{{loop.history}}`; `<= 0` unlimited |
 | `ATELIER_LOOP_HISTORY_ENTRY_CHARS` | `40000` | chars per history entry; `<= 0` unlimited |
-| `ATELIER_HARNESSES` | empty | JSON object of `name -> argv`, registers `harness:<name>` |
-| `ATELIER_CLAUDE_LAUNCH_CMD` | registry | JSON argv override |
-| `ATELIER_CODEX_LAUNCH_CMD` | registry | JSON argv override |
-| `ATELIER_OPENCODE_LAUNCH_CMD` | registry | JSON argv override |
-| `ATELIER_COPILOT_LAUNCH_CMD` | registry | JSON argv override |
-| `ATELIER_CURSOR_LAUNCH_CMD` | registry | JSON argv override |
+| `ATELIER_HARNESSES` | empty | JSON object of `name -> argv`, registers `harness:<name>`; **shell only** |
+| `ATELIER_CLAUDE_LAUNCH_CMD` | registry | JSON argv override; **shell only** |
+| `ATELIER_CODEX_LAUNCH_CMD` | registry | JSON argv override; **shell only** |
+| `ATELIER_OPENCODE_LAUNCH_CMD` | registry | JSON argv override; **shell only** |
+| `ATELIER_COPILOT_LAUNCH_CMD` | registry | JSON argv override; **shell only** |
+| `ATELIER_CURSOR_LAUNCH_CMD` | registry | JSON argv override; **shell only** |
 | `ATELIER_DONE_MARKER` | `[ATELIER_DONE]` | token that ends an `interactive: true` conversation |
-| `ATELIER_AGENT_PERMISSIONS` | `full` | `full`, `edits` or `read-only` for every agent task, also `atelier ask`; a task's `permissions:` wins. See [permission levels](conduit-yaml.md#agent-permission-levels) |
-| `ATELIER_API_TOKEN` | empty | bearer token for the HTTP/WS API |
-| `ATELIER_SERVE_URL` | `http://127.0.0.1:8000` | base of the `run page` link a run prints |
+| `ATELIER_AGENT_PERMISSIONS` | `full` | `full`, `edits` or `read-only` for every agent task, also `atelier ask`; a task's `permissions:` or `ask --permissions` wins. A `.env` may set `edits` or `read-only`, not `full`. See [permission levels](conduit-yaml.md#agent-permission-levels) |
+| `ATELIER_ALLOW_UNENFORCED_PERMISSIONS` | unset | `1` runs `edits` or `read-only` on an agent that cannot be held to it, with a warning, instead of failing; **shell only** |
+| `ATELIER_API_TOKEN` | empty | bearer token for the HTTP/WS API; **shell only**. Agent and shell steps do not receive it |
+| `ATELIER_SERVE_URL` | `http://127.0.0.1:8000` | base of the `run page` link a run prints; **shell only** |
