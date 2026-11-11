@@ -77,8 +77,8 @@ releases have no `atelier ask --permissions`.
      authority, secret, or irreversible decision that belongs to them.
    - Type the answer in the running PTY and press Enter: Enter submits.
      Escape then Enter (Alt+Enter) adds a new line inside the answer. Atelier
-     0.14.0 shows the hint `Alt+Enter to submit` above the prompt. The hint is
-     wrong; ignore it.
+     0.14.0 shows the hint `Alt+Enter to submit` above the prompt. That hint is
+     wrong; ignore it. From 0.14.1 the hint is correct.
    - Without a terminal, `atelier ask` reads each answer as one line of piped
      stdin. Prefer a PTY, so you read each question before you answer it.
    - Continue until the flow completes. Do not leave Claude waiting for input.

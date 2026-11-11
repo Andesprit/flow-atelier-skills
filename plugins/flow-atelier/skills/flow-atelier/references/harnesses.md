@@ -248,7 +248,7 @@ is configurable via `ATELIER_DONE_MARKER`.
 
 At that prompt, Enter submits your message and Escape then Enter (Alt+Enter)
 adds a new line. Atelier 0.14.0 prints the hint `Alt+Enter to submit`; it is
-wrong. When stdin is not a terminal, each message is one line of stdin.
+wrong. 0.14.1 prints the correct one. When stdin is not a terminal, each message is one line of stdin.
 
 Permission requests are approved automatically by default, within the task's
 `permissions` level. With `interaction.permissions: human`, a request the level

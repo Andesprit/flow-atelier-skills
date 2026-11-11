@@ -138,7 +138,7 @@ without asking; without it the agent gets `ATELIER_AGENT_PERMISSIONS`, else
 sent (see [permission levels](conduit-yaml.md#agent-permission-levels)).
 Answer its questions until it finishes: Enter submits an answer, and Escape then
 Enter adds a new line. The hint `Alt+Enter to submit` that 0.14.0 prints is
-wrong. When stdin is not a terminal, each answer is one line of stdin.
+wrong; 0.14.1 prints the correct one. When stdin is not a terminal, each answer is one line of stdin.
 
 ## Inspecting
 
