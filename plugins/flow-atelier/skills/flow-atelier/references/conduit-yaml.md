@@ -120,10 +120,12 @@ project, can lead it to do damage. Limit it with the task field `permissions`:
 |---|---|
 | `full` | Everything. This is the default. |
 | `edits` | Read and change files. Atelier picks an accept-edits mode when the agent has one, such as Claude Code's `acceptEdits`, else a read-only mode that asks before each edit, such as Codex's `read-only`. It allows requests to read, search, edit, move or delete files, and rejects the rest, such as running a command or fetching a URL. |
-| `read-only` | Only read, as far as Atelier is asked. Atelier picks a read-only mode such as Codex's `read-only`, else keeps the agent's own mode (leaving a bypass mode first), and rejects every request. |
+| `read-only` | Only read, as far as Atelier is asked. Atelier picks a read-only mode such as Codex's `read-only`, else a mode that asks before acting, such as Claude Code's `default` (leaving a bypass mode first), and rejects every request. |
 
 Set it on one task with `permissions:`, or for every agent task with
-`ATELIER_AGENT_PERMISSIONS` in the environment or in `.env`. The task field
+`ATELIER_AGENT_PERMISSIONS` in the environment. A `.env` file may set it to
+`edits` or `read-only`, but since 0.14.0 a `.env` value of `full` is ignored.
+`atelier ask` takes the same level as `--permissions`. The task field
 wins. It is valid only on `harness:<name>` tasks; elsewhere `atelier check`
 fails with `permissions requires a harness:<name> tool`. `atelier plan` shows
 the level of each agent task. `atelier harness check` shows the mode runs will
@@ -143,7 +145,20 @@ permissions. Setting either one, even to `full`, removes that line.
 **The levels are not a sandbox.** Atelier only chooses the agent's mode and
 answers the requests the agent sends. An agent can still do what its own mode
 allows without asking: Codex in its `read-only` mode still runs commands that
-only read, inside its own sandbox. The agent's own settings also apply at every
+only read, inside its own sandbox.
+
+**A level the agent cannot be held to fails the task (0.14.0).** `edits` and
+`read-only` need a mode named for the level or a mode known to ask before
+acting (`default`, `normal`, `ask`, `code`). An agent with no session modes, or
+only modes Atelier does not know, such as opencode's `build`, could act
+without asking. Such a task fails before its prompt is sent, with
+`permissions read-only cannot be enforced: ...`. Use an agent that has such a
+mode (Claude Code and Codex do), or `permissions: full`. To run anyway, with
+only the requests the agent asks about checked, set
+`ATELIER_ALLOW_UNENFORCED_PERMISSIONS=1` in the shell; it is not read from
+`.env`, and the run prints a warning. Before 0.14.0 such a task ran anyway.
+
+The agent's own settings also apply at every
 level. Claude Code loads your user settings and the project's
 `.claude/settings.json` and `.claude/settings.local.json`; tools their allow
 rules pre-approve run without asking, and their hooks run shell commands by
@@ -182,6 +197,9 @@ policies:
   error fails the interaction.
 - `hybrid` asks the supervisor first. It can escalate a decision to a human;
   supervisor errors, timeouts and exhausted limits also fall back to a human.
+- Since 0.14.0 a supervisor reply that holds two different decisions is no
+  decision: in `supervisor` mode it fails the task, in `hybrid` mode the
+  request goes to a human.
 - `approve_all` applies only to permissions and approves requests automatically.
 
 Questions route through this policy on tasks with `interactive: true` (or when
@@ -571,6 +589,34 @@ answers land in the same namespace as conduit inputs, so avoid names that
 collide with declared inputs. Do not declare them under `inputs:` either: that
 makes the run ask for them before it starts.
 
+**A gate finishes once it has its answers, whatever they are.** A step with a
+plain `depends_on: [approve]` runs after `no` or an empty answer too. To make
+it an approval, depend on the answer. The gate's output lists each answer as
+YAML, one per line, such as `confirm: 'yes'`:
+
+```yaml
+- deploy:
+    description: Deploy after a yes
+    task: make deploy
+    tool: tool:bash
+    depends_on:
+      - "approve.output.match(confirm: 'yes')"
+```
+
+Any other answer skips `deploy`. `atelier check` warns when a step has a plain
+dependency on a gate whose name or inputs mention approve or confirm:
+
+```
+⚠ deploy: runs after the human gate approve whatever the answer, even 'no' or
+empty; to run it only on approval, depend on "approve.output.match(confirm:
+'yes')"
+```
+
+YAML quotes `yes`, `no` and an empty answer (`confirm: ''`). A word such as
+`APPROVE` is written plain (`approval: APPROVE`), so match that exact form.
+Only a missing answer fails the gate, for example when stdin ends with no
+answer.
+
 The run blocks until answered. Over the WebSocket API the same gate is delivered
 as a message and answered by the client.
 
@@ -581,7 +627,7 @@ as a message and answered by the client.
     description: Run the deploy sub-conduit
     task: deploy_to_env          # a conduit NAME, not a command
     tool: tool:conduit
-    depends_on: [approve]
+    depends_on: ["approve.output.match(confirm: 'yes')"]
     inputs:
       target_env: "{{inputs.env}}"
       build_path: /tmp/build

@@ -53,6 +53,21 @@ engine.
 |---|---|---|
 | `use "$INPUT_NAME" instead of {{inputs.name}}` (or `$OUTPUT_<TASK>`, `$LOOP_PREVIOUS`) | a shell step pastes a value into its command, where it can run as code | read the variable it names, in double quotes; see [Values in shell steps](conduit-yaml.md#values-in-shell-steps) |
 | `uses default on_exhaust: complete and may finish after N iterations` | a loop with dependents completes even when its condition is never met | set `on_exhaust: fail` on it, or raise `repeat` |
+| `runs after the human gate approve whatever the answer, even 'no' or empty` | a plain `depends_on: [approve]` on a `tool:hitl` gate; the gate finishes whatever the answer | depend on the answer, as the warning says: `"approve.output.match(confirm: 'yes')"`; see [`tool:hitl`](conduit-yaml.md#toolhitl) |
+
+## A setting in `.env` is ignored
+
+```
+[flow-atelier] ignored ATELIER_HARNESSES from ./.env: set it in your shell environment instead; the .env of the folder you run in cannot set it
+```
+
+Since 0.14.0 the `.env` of the folder you run in cannot set the
+`ATELIER_*_LAUNCH_CMD` settings, `ATELIER_HARNESSES`,
+`ATELIER_GLOBAL_ATELIER_DIR`, `ATELIER_API_TOKEN` or `ATELIER_SERVE_URL`, or
+set `ATELIER_AGENT_PERMISSIONS=full`. Export the setting in your shell
+instead. Signs you missed this line: an agent you registered in `.env` is
+unknown, the `run page` link points at port 8000 again, or a server you
+started with a token in `.env` answers without one.
 
 ## A task was skipped and you did not expect it
 
@@ -122,6 +137,11 @@ Other failure sources:
   unless the task overrides it. Nested conduits have their own budget - a parent
   looping a 1h child 10 times inside a 2h parent budget will not get 10
   iterations. **Nested timeouts do not compose; check the arithmetic.**
+- **`flow stopped` and exit code 143.** `atelier stop` or another SIGTERM ended
+  the run. Since 0.14.0 `atelier run` and `atelier ask` exit 143 then, not 0.
+  `atelier stop` itself exits 1 when the flow is still running after its
+  15-second wait; check `atelier status <flow_id>` before you assume the work
+  ended.
 - **Fail-fast.** A failed task cancels siblings still running. If a long branch
   keeps dying with nothing obviously wrong in it, look at what failed elsewhere
   in the same wave. When one branch's failure should not kill the others, make
@@ -144,6 +164,15 @@ atelier harness check <name>      # costs no tokens
 Failures include the tail of the agent's own stderr. `atelier list harnesses --ready`
 shows what actually runs on this machine. If a name resolves to an `npx`/`uvx`
 agent, Node.js or uv must be on PATH.
+
+An agent task can also fail with one of these 0.14.0 errors:
+
+| Error contains | Cause | Fix |
+|---|---|---|
+| `permissions read-only cannot be enforced` (or `edits`) | the agent has no session modes, or only modes Atelier does not know, so it could act without asking | use an agent with a read-only or asking mode (Claude Code, Codex), or `permissions: full`; or export `ATELIER_ALLOW_UNENFORCED_PERMISSIONS=1` to run anyway with a warning |
+| `agent returned no answer` | a turn with no tool calls returned nothing | run the task again; if it repeats, check the agent with `atelier harness check <name>` |
+| `agent reported an error instead of an answer` | the whole reply was a login or account error, such as `Not logged in` | log in with the agent's own CLI, then resume |
+| `agent reported a usage limit` | the reply was only a usage-limit notice | Atelier waits for the reset and runs the turn again, as for other usage limits; if the run still failed, resume it after the reset |
 
 ## The wrong conduit ran
 
