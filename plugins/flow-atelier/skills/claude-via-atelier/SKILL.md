@@ -34,12 +34,14 @@ role.
      until it has performed and checked the work.
    - Do not forward secrets or credentials. Flow logs are unredacted.
 
-3. Start Claude through Flow Atelier in a PTY:
+3. Start Claude through Flow Atelier in a PTY. For inspection, pass `--permissions read-only`.
 
    ```bash
-   atelier ask "<delegation prompt>" --path "<absolute working directory>"
+   atelier ask "<delegation prompt>" --path "<absolute working directory>" --permissions read-only
    ```
 
+   For authorized file changes, use `--permissions edits`. Omitting the flag
+   uses `ATELIER_AGENT_PERMISSIONS`, which defaults to `full`.
    Pass the prompt as one safely quoted argument. Never allow prompt text to
    become shell syntax. Keep the command attached to a live terminal so Claude
    can hand the turn back.
@@ -55,9 +57,8 @@ role.
      whenever the answer is discoverable.
    - Ask the user only when Claude exposes a material product choice, missing
      authority, secret, or irreversible decision that belongs to them.
-   - Send the answer to the running PTY. For the multiline prompt, submit with
-     Alt+Enter; when controlling a PTY programmatically, send Escape and Enter
-     separately if a combined sequence does not submit.
+   - Send the answer to the running PTY and press Enter to submit.
+     Alt+Enter (Escape then Enter) inserts a newline within the answer.
    - Continue until the flow completes. Do not leave Claude waiting for input.
    - `atelier ask` prints `· run page <url>` when the flow starts. Give the user
      that link so they can follow Claude's work live, as the flow-atelier
