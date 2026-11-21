@@ -17,10 +17,14 @@ Source: <https://github.com/Andesprit/flow-atelier>
 | Term | Meaning |
 |---|---|
 | **Conduit** | A recipe. One YAML file at `.atelier/conduits/<name>/conduit.yaml` |
-| **Task** | One step in that recipe |
+| **Task** | One checkable result. Give an agent the skills, goal and acceptance check it needs to deliver it. |
 | **Flow** | One run of a conduit, saved under `.atelier/flows/<flow_id>/` |
 | **Harness** | An AI coding agent a task can hand work to |
 | **HITL** | A step that pauses and asks a person a typed question |
+
+Split an assignment for clean context, parallel work, an independent test or
+review, or a different permission level or agent. Keep the first plan and
+implementation together when the same worker can deliver both.
 
 Agents run through **your existing login** for that tool. flow-atelier never
 sees, stores, or proxies credentials, and installs no agents.
@@ -29,6 +33,7 @@ sees, stores, or proxies credentials, and installs no agents.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Andesprit/flow-atelier/main/install.sh | bash
+export PATH="$HOME/.atelier/bin:$PATH"
 ```
 
 Prebuilt binaries cover Linux x86_64, macOS arm64, Windows x86_64. Intel Macs are
@@ -47,6 +52,26 @@ start, its expected output and a setup-failure map.
 For a complete starting point, see [recipes](references/recipes.md): review loops,
 agent handoffs, human approval, test/fix loops, and a nightly schedule. Each has
 copyable YAML, check/run commands, expected results and a first recovery step.
+
+## Choose a workflow
+
+- For one question, use `atelier ask` with the project path, harness and
+  `--permissions read-only`. Add `--json --timeout 60` for one bounded turn.
+  On `needs_input`, read `atelier ask FLOW --json`, then use
+  `--answer TEXT --request-id ID --json` or `--cancel --json` on that flow.
+- To repeat or schedule the assignment, use `atelier compose` with one
+  `--step` and `--permissions read-only`. Supply the required `brief` at run
+  time. `run --json` returns the allocated flow's ID and status. Pre-result
+  errors go to stderr as JSON. `logs FLOW --jsonl --follow` streams records.
+- For a code change, `create --template fix-loop` gives planning and building
+  to one agent. A separate shell test gates the reviews and verdict.
+- For research, have a read-only researcher cite each claim and a fresh
+  read-only checker verify the references and write the decision memo.
+- For competing implementations, isolate the writers with `--worktree` and
+  run the same trusted fixture at each recorded checkout path.
+
+Read advisory `check` warnings even when validation succeeds. They can flag a
+serial handoff or a loop that trusts a marker the agent itself can print.
 
 ## Anatomy of a conduit
 
