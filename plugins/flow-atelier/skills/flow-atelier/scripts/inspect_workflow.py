@@ -5,8 +5,7 @@ Usage: inspect_workflow.py <project_path> <conduit> [--json] [--timeout SECONDS]
 
 Runs only `atelier check --json <conduit>` and, when that passes,
 `atelier show --json <conduit>`, from <project_path>, with update checks off.
-It never runs a workflow, starts an agent, or creates the directories the CLI
-would create on its own; a missing layout is reported instead.
+If store directories are missing, both calls require read-only store support.
 
 Exit codes: 0 valid definition (not run), 1 invalid definition,
 2 not inspectable, 64 usage error.
@@ -18,6 +17,7 @@ import os
 import shlex
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -79,23 +79,27 @@ def layout(project):
         dirs[name] = project / value if value is not None else default
     atelier, global_dir = dirs.values()
     needed = [atelier / "conduits", atelier / "flows", atelier / "schedules", global_dir / "conduits"]
-    missing = [str(p) for p in needed if not (p.is_dir() and os.access(p, os.R_OK | os.X_OK))]
-    if missing:
-        raise NotInspectable(
-            "missing or unreadable Atelier directories, which the CLI would create on any call: "
-            + ", ".join(missing),
-            "nothing was inspected. To prepare them yourself (this writes directories): mkdir -p "
-            + " ".join(shlex.quote(p) for p in missing),
-        )
-    return atelier / "conduits", global_dir / "conduits"
+    missing = []
+    for path in needed:
+        try:
+            mode = path.stat().st_mode
+        except FileNotFoundError:
+            missing.append(str(path))
+            continue
+        except OSError as exc:
+            raise NotInspectable(f"cannot read {path}: {exc}", "check access to the store directory")
+        if not (stat.S_ISDIR(mode) and os.access(path, os.R_OK | os.X_OK)):
+            raise NotInspectable(f"unreadable store directory: {path}", "check access to the store directory")
+    return atelier / "conduits", global_dir / "conduits", missing
 
 
-def atelier_json(atelier, args, project, timeout):
+def atelier_json(atelier, args, project, timeout, missing):
     """Run one allowlisted read-only CLI call; return (exit code, parsed stdout or None, stderr)."""
     env = {**os.environ, "ATELIER_NO_UPDATE_CHECK": "1", "PYTHONDONTWRITEBYTECODE": "1"}
     try:
         proc = subprocess.Popen(
-            [atelier, *args], cwd=project, env=env, stdin=subprocess.DEVNULL,
+            [atelier, *(["--require-read-only-stores"] if missing else []), *args],
+            cwd=project, env=env, stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8", errors="replace",
             start_new_session=True,
         )
@@ -116,6 +120,11 @@ def atelier_json(atelier, args, project, timeout):
             "retry with a larger --timeout",
         )
     if proc.returncode == 2:
+        if missing:
+            raise NotInspectable(
+                "this CLI could not inspect missing store directories in read-only mode: " + ", ".join(missing),
+                "upgrade flow-atelier to a version with read-only store inspection",
+            )
         raise NotInspectable(
             f"this atelier does not accept `{' '.join(args)}`: {err.strip()[-300:]}",
             "upgrade flow-atelier (check/show --json need atelier 0.12 or newer)",
@@ -151,7 +160,7 @@ def inspect(project_arg, conduit, timeout):
             raise NotInspectable("the atelier command is not on PATH", "install the CLI: see references/first-run.md")
         if conduit in ("", ".", "..") or "/" in conduit or os.sep in conduit:
             raise NotInspectable(f"{conduit!r} is not a conduit name", "pass the name shown by `atelier list conduits`")
-        project_dir, global_dir = layout(project)
+        project_dir, global_dir, missing = layout(project)
         cd = f"cd {shlex.quote(str(project))} && "
         # Fingerprint both candidate files before the first call, so a definition
         # that changes at any point during check or show is never reported.
@@ -162,7 +171,7 @@ def inspect(project_arg, conduit, timeout):
             if {src: file_hash(path) for src, path in candidates.items()} != before:
                 raise NotInspectable("the definition changed while it was being inspected", "inspect again")
 
-        code, rows, err = atelier_json(atelier, ["check", "--json", conduit], project, timeout)
+        code, rows, err = atelier_json(atelier, ["check", "--json", conduit], project, timeout, missing)
         unchanged()
         if rows is None:
             if code == 1 and "unknown conduit" in err:
@@ -195,7 +204,7 @@ def inspect(project_arg, conduit, timeout):
         incomplete = "definition passed `atelier check`, but its details could not be read: "
         if before[row["source"]] is None:
             raise NotInspectable(incomplete + f"cannot read {row['path']}", cd + f"atelier show {shlex.quote(conduit)}")
-        code, shown, err = atelier_json(atelier, ["show", "--json", conduit], project, timeout)
+        code, shown, err = atelier_json(atelier, ["show", "--json", conduit], project, timeout, missing)
         unchanged()
         if code != 0 or not isinstance(shown, dict):
             raise NotInspectable(incomplete + f"`atelier show` exited {code} {err[-300:]}", cd + f"atelier show {shlex.quote(conduit)}")

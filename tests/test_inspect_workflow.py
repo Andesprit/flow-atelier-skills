@@ -20,10 +20,15 @@ with open(os.environ["FAKE_LOG"], "a") as log:
     log.write(json.dumps({{"argv": sys.argv[1:], "cwd": os.getcwd(),
         "no_update": os.environ.get("ATELIER_NO_UPDATE_CHECK"),
         "no_bytecode": os.environ.get("PYTHONDONTWRITEBYTECODE")}}) + "\\n")
-if sys.argv[1:] not in (["check", "--json", "{name}"], ["show", "--json", "{name}"]):
+args = sys.argv[1:]
+if args[:1] == ["--require-read-only-stores"]:
+    if not scenario["read_only_stores"]:
+        sys.exit(2)
+    args = args[1:]
+if args not in (["check", "--json", "{name}"], ["show", "--json", "{name}"]):
     sys.stderr.write("FORBIDDEN fake atelier call: %r\\n" % sys.argv[1:])
     sys.exit(99)
-step = scenario[sys.argv[1]]
+step = scenario[args[0]]
 if step.get("mutate"):
     open(step["mutate"], "a").write("# changed\\n")
 if step.get("sleep"):
@@ -64,11 +69,12 @@ class InspectWorkflowTest(unittest.TestCase):
         self.log = self.tmp / "calls.jsonl"
         self.scenario = self.tmp / "scenario.json"
 
-    def fake(self, check=None, show=None, name="greet"):
+    def fake(self, check=None, show=None, name="greet", read_only_stores=False):
         fake = self.bin / "atelier"
         fake.write_text(FAKE.format(python=sys.executable, name=name))
         fake.chmod(0o755)
-        self.scenario.write_text(json.dumps({"check": check or {}, "show": show or {}}))
+        self.scenario.write_text(json.dumps({"check": check or {}, "show": show or {},
+                                             "read_only_stores": read_only_stores}))
 
     def snapshot(self):
         return {str(p.relative_to(self.tmp)): p.is_dir() or (p.stat().st_size, p.stat().st_mtime_ns)
@@ -244,9 +250,23 @@ class InspectWorkflowTest(unittest.TestCase):
         self.assertEqual((code, rep["status"]), (2, "not_inspectable"))
         self.assertIn(str(self.project / ".atelier/schedules"), rep["error"])
         self.assertIn(str(self.home / ".atelier/conduits"), rep["error"])
-        self.assertIn("writes directories", rep["next"])
-        self.assertEqual(self.calls(), [])
+        self.assertIn("upgrade", rep["next"])
+        self.assertEqual([c["argv"] for c in self.calls()], [["--require-read-only-stores", "check", "--json", "greet"]])
         self.assertFalse((self.project / ".atelier/schedules").exists())
+
+    def test_global_conduit_in_a_fresh_project(self):
+        project = self.tmp / "fresh"
+        project.mkdir()
+        global_copy = self.home / ".atelier/conduits/greet/conduit.yaml"
+        global_copy.parent.mkdir()
+        global_copy.write_text("name: greet\n")
+        self.fake({"stdout": check_row(global_copy, source="global")},
+                  {"stdout": show_doc(global_copy, source="global")}, read_only_stores=True)
+        result = self.run_cli(str(project), "greet", "--json")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(json.loads(result.stdout)["source"], "global")
+        self.assertEqual([c["argv"] for c in self.calls()], [
+            ["--require-read-only-stores", cmd, "--json", "greet"] for cmd in ["check", "show"]])
 
     def test_unsearchable_layout_directory_is_refused(self):
         self.fake()

@@ -69,11 +69,12 @@ bytecode writes. On timeout it stops the whole process group it started
 (POSIX; on other systems only the direct child is stopped). No agent, workflow,
 package, scheduler, server or network command is part of it.
 
-The `atelier` CLI creates its directories when they are missing, even for
-`check`. So the script first looks for `<atelier dir>/conduits`, `flows` and
-`schedules` and `<global dir>/conduits`. If one is missing or unreadable, it
-calls nothing and reports `not_inspectable` with the exact paths. Creating them
-is your choice; the report prints the `mkdir -p` command that would do it.
+Missing stores count as empty. For example, a project can inspect a global
+conduit before its first local run. When a store directory is missing, the
+script passes the global option `--require-read-only-stores` to both commands.
+Older CLIs reject that option before opening a store. The report then gives the
+missing paths and suggests upgrading. Older CLIs can still inspect a complete
+layout. An unreadable directory produces a diagnostic naming its path.
 
 The directories follow the CLI settings: `ATELIER_ATELIER_DIR` and
 `ATELIER_GLOBAL_ATELIER_DIR` from the environment, relative to the project path,
