@@ -2,13 +2,17 @@
 
 ```bash
 atelier serve [--host 127.0.0.1] [--port 8000] [--reload-interval 30.0] \
-              [--cors-origin URL]... [--log-level INFO] [--idle-exit MINUTES]
+              [--cors-origin URL]... [--log-level INFO] [--idle-exit MINUTES] [--no-scheduler]
 ```
 
-One process hosting both the HTTP/WebSocket API and the scheduler daemon. It is
+By default one process hosts both the HTTP/WebSocket API and the scheduler daemon. It is
 the entry point the Flow Atelier visual frontend connects to - the designer lays
 a conduit out by dependency depth, runs stream to a dashboard including HITL
 gates, and every flow gets a live run page (see below).
+
+Use `atelier serve --no-scheduler` for a run page or an additional dashboard.
+This serves the same API with the embedded scheduler disabled. Startup prints
+the project store and either the active schedule directory or “Scheduler disabled”.
 
 `--port 0` picks an ephemeral port. `--cors-origin URL` (repeatable) lets
 another page's origin call the API; by default only the server's own pages
@@ -77,10 +81,10 @@ Conduits and flows resolve exactly as on the CLI - `./.atelier` first, then
 `~/.atelier` - so the conduits in the directory you started the server from are
 the ones the UI shows.
 
-**Schedules are the exception**: `serve` reads `~/.atelier/schedules/`, since one
-daemon serves every project. The CLI's `atelier schedule add` writes to
-`./.atelier/schedules/`. If a schedule you added on the CLI does not appear in
-the UI, that is why.
+Schedules are shared across projects in `~/.atelier/schedules/`. The CLI, API
+and daemon use the same global root, configurable with
+`ATELIER_GLOBAL_ATELIER_DIR`. Run one scheduler for this store. To move old
+project jobs before starting it, see [Scheduling](scheduling.md).
 
 ## Security
 

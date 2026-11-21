@@ -17,10 +17,14 @@ Source: <https://github.com/Andesprit/flow-atelier>
 | Term | Meaning |
 |---|---|
 | **Conduit** | A recipe. One YAML file at `.atelier/conduits/<name>/conduit.yaml` |
-| **Task** | One step in that recipe |
+| **Task** | One checkable result. Give an agent the skills, goal and acceptance check it needs to deliver it. |
 | **Flow** | One run of a conduit, saved under `.atelier/flows/<flow_id>/` |
 | **Harness** | An AI coding agent a task can hand work to |
 | **HITL** | A step that pauses and asks a person a typed question |
+
+Split an assignment for clean context, parallel work, an independent test or
+review, or a different permission level or agent. Keep the first plan and
+implementation together when the same worker can deliver both.
 
 Agents run through **your existing login** for that tool. flow-atelier never
 sees, stores, or proxies credentials, and installs no agents.
@@ -29,6 +33,7 @@ sees, stores, or proxies credentials, and installs no agents.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Andesprit/flow-atelier/main/install.sh | bash
+export PATH="$HOME/.atelier/bin:$PATH"
 ```
 
 Prebuilt binaries cover Linux x86_64, macOS arm64, Windows x86_64. Intel Macs are
@@ -38,7 +43,7 @@ not supported. Windows uses `irm .../install.ps1 | iex`. With Python 3.13+ and u
 ```bash
 atelier init                          # writes .atelier/conduits/hello/
 atelier run hello --input name=world
-atelier serve                         # visual editor and run pages on :8000
+atelier serve --no-scheduler          # visual editor and run pages on :8000
 ```
 
 For a newcomer, [first run](references/first-run.md) gives a verified shell-only
@@ -47,6 +52,26 @@ start, its expected output and a setup-failure map.
 For a complete starting point, see [recipes](references/recipes.md): review loops,
 agent handoffs, human approval, test/fix loops, and a nightly schedule. Each has
 copyable YAML, check/run commands, expected results and a first recovery step.
+
+## Choose a workflow
+
+- For one question, use `atelier ask` with the project path, harness and
+  `--permissions read-only`. Add `--json --timeout 60` for one bounded turn.
+  On `needs_input`, read `atelier ask FLOW --json`, then use
+  `--answer TEXT --request-id ID --json` or `--cancel --json` on that flow.
+- To repeat or schedule the assignment, use `atelier compose` with one
+  `--step` and `--permissions read-only`. Supply the required `brief` at run
+  time. `run --json` returns the allocated flow's ID and status. Pre-result
+  errors go to stderr as JSON. `logs FLOW --jsonl --follow` streams records.
+- For a code change, `create --template fix-loop` gives planning and building
+  to one agent. A separate shell test gates the reviews and verdict.
+- For research, have a read-only researcher cite each claim and a fresh
+  read-only checker verify the references and write the decision memo.
+- For competing implementations, isolate the writers with `--worktree` and
+  run the same trusted fixture at each recorded checkout path.
+
+Read advisory `check` warnings even when validation succeeds. They can flag a
+serial handoff or a loop that trusts a marker the agent itself can print.
 
 ## Anatomy of a conduit
 
@@ -107,7 +132,8 @@ tasks:
       description: Run the deploy sub-conduit
       task: deploy_to_env                # the conduit name, not a command
       tool: tool:conduit
-      depends_on: ["approve.output.match(confirm: 'yes')"]   # only on a yes
+      depends_on:
+        - "approve.output.match((?m)^confirm: 'yes'$)"
       inputs: {target_env: "{{inputs.env}}"}
 
   - rollback:
@@ -120,8 +146,43 @@ tasks:
 
 `approve` and `rollback` are mutually exclusive branches. **An unmet condition
 skips a task, it does not fail it** - and everything downstream skips too.
-A `tool:hitl` gate finishes whatever the answer, so `deploy` checks the answer:
-a plain `depends_on: [approve]` would deploy after `no` too.
+A `tool:hitl` gate finishes whatever the answer, so a plain
+`depends_on: [approve]` would deploy after `no` too. The condition above
+runs `deploy` only for the exact answer `yes`. A `no` or blank answer skips it.
+
+### Approving an exact patch
+
+For a local example, suppose `release.patch` adds one new file to a Git
+worktree. Use this shell command in a step named `preview` before `approve`.
+It stores the proposed bytes in Git and outputs their digest.
+
+```bash
+digest=$(git hash-object -w --no-filters release.patch) && printf '%s' "$digest"
+```
+
+Make `approve` depend on `preview` and set its prompt to
+`Review git cat-file -p {{preview.output}} before answering.` The reviewer
+can run that command in the worktree to read the exact patch. Keep the
+deploy condition above. For this example, use the following shell step as
+the deploy action in the same worktree.
+
+```bash
+set -eo pipefail
+current=$(git hash-object --no-filters release.patch)
+if [[ "$current" != "$OUTPUT_PREVIEW" ]]; then
+  echo 'Patch changed since approval. Start a new run.' >&2
+  exit 1
+fi
+if git cat-file blob "$current" | git apply --reverse --check - 2>/dev/null; then
+  exit 0
+fi
+git cat-file blob "$current" | git apply -
+```
+
+The apply reads the verified blob. If a run stops just after creating the
+file, the reverse check recognizes the applied patch on resume. For a
+remote deployment, use the approved digest and target as the deployment
+service's idempotency key so the service can recognize a repeated request.
 
 ### Tools
 
@@ -191,7 +252,7 @@ listing      list conduits · list flows · list harnesses · list schedules
 cleanup      rm · prune
 agents       harness check · harness sync
 packages     install · update · uninstall
-scheduling   schedule add|rm|run-now|history|daemon
+scheduling   schedule add|migrate|rm|run-now|history|daemon
 server       serve
 upgrading    self-update
 ```
@@ -227,15 +288,13 @@ starts, and again in your final report.
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows
    # 000 = no server: start one, in the background so it outlives your command
-   nohup atelier serve --idle-exit 30 > .atelier/serve.log 2>&1 &
+   nohup atelier serve --no-scheduler --idle-exit 30 > .atelier/serve.log 2>&1 &
    ```
 
-   `--idle-exit 30` makes it stop by itself 30 minutes after the run ends and
-   the page is closed. If the installed atelier rejects the flag (older than
-   the release that added it), start it without the flag and tell the user it
-   keeps running until they stop it. Tell the user you started it and that,
-   while up, it also fires the schedules in `~/.atelier/schedules/`. Keep the
-   default loopback host; never bind `0.0.0.0` for this.
+   Tell the user you started a viewer with the scheduler disabled. It stops
+   after the run ends and the page has been closed for 30 minutes. Keep the
+   default loopback host. If the installed version lacks `--no-scheduler`,
+   suggest upgrading before starting a run-page viewer.
 
 2. **Read the link.** Right after `starting flow <id>` (or `resuming flow <id>`)
    the run prints:
@@ -270,11 +329,12 @@ earlier). Say so and suggest an upgrade instead of sending a dead link.
 ```
 .atelier/
   conduits/<name>/conduit.yaml      project conduits (also ~/.atelier/conduits/)
-  schedules/<name>.yaml             one file per schedule
-  scheduler_state.json              fired-once markers
   flows/<flow_id>/                  <YYYYMMDD>_<uuid8>_<conduit>
     input.yaml  logs.jsonl  progress.json  outputs.yaml
     flows/<child_flow_id>/          nested tool:conduit runs
+~/.atelier/
+  schedules/<name>.yaml             shared schedules
+  scheduler_state.json              fired-once markers and run history
 ```
 
 Conduits resolve **project first, then global** (`~/.atelier/conduits/`); a

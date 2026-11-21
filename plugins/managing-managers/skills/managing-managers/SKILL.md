@@ -111,12 +111,18 @@ Take model names from `atelier harness check <agent>`.
 
 ## How a brief runs
 
-1. Plan: the manager turns the definition of done into a scorecard and small tasks, each tied to
-   an outcome. The controller runs measured outcomes itself.
+1. Plan: the manager turns the definition of done into a scorecard. Each task gives one worker
+   a complete result it can deliver and verify with its skills. That result can serve several
+   scorecard items. Split only when the benefit justifies the handoff. The plan summary names
+   what each extra worker adds: clean context for the next step, work that can run in parallel,
+   an independent test or review, or a step requiring different permissions or a different agent.
+   The controller runs measured outcomes itself.
 2. Work: a Codex worker builds one task in its own conversation. It may stop with a question; the
    manager answers and the same conversation continues.
 3. Check: the manager accepts (naming the outcome the task advances), sends it back, abandons it
    (commits kept under `refs/managing-managers/...`) or pauses for the user.
+   If the plan missed work, the manager applies the same rule to each new task and explains
+   the benefit of each extra worker in the verdict reason.
 4. Review: a fresh Codex reviewer reviews the whole brief each round. Findings are critical, high,
    medium or low, and tied to the brief or to correctness; anything else is a suggestion.
    Critical and high findings go back to the worker conversation that built that code.

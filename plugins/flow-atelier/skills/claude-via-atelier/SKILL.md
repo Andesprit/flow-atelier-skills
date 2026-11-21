@@ -41,7 +41,7 @@ releases have no `atelier ask --permissions`.
      sends, such as most shell commands; only what Claude Code does without
      asking still runs. Do not count on Claude running `git diff`.
 
-3. Start Claude through Flow Atelier in a PTY:
+3. Start Claude through Flow Atelier in a PTY. For inspection, pass `--permissions read-only`.
 
    ```bash
    atelier ask "<delegation prompt>" --path "<absolute working directory>" --permissions read-only
