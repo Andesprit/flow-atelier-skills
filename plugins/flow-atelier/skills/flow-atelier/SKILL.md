@@ -107,7 +107,8 @@ tasks:
       description: Run the deploy sub-conduit
       task: deploy_to_env                # the conduit name, not a command
       tool: tool:conduit
-      depends_on: [approve]
+      depends_on:
+        - "approve.output.match((?m)^confirm: 'yes'$)"
       inputs: {target_env: "{{inputs.env}}"}
 
   - rollback:
@@ -120,6 +121,42 @@ tasks:
 
 `approve` and `rollback` are mutually exclusive branches. **An unmet condition
 skips a task, it does not fail it** - and everything downstream skips too.
+At the human gate, only the exact answer `yes` runs `deploy`. A `no` or
+blank answer skips it.
+
+### Approving an exact patch
+
+For a local example, suppose `release.patch` adds one new file to a Git
+worktree. Use this shell command in a step named `preview` before `approve`.
+It stores the proposed bytes in Git and outputs their digest.
+
+```bash
+digest=$(git hash-object -w --no-filters release.patch) && printf '%s' "$digest"
+```
+
+Make `approve` depend on `preview` and set its prompt to
+`Review git cat-file -p {{preview.output}} before answering.` The reviewer
+can run that command in the worktree to read the exact patch. Keep the
+deploy condition above. For this example, use the following shell step as
+the deploy action in the same worktree.
+
+```bash
+set -eo pipefail
+current=$(git hash-object --no-filters release.patch)
+if [[ "$current" != "$OUTPUT_PREVIEW" ]]; then
+  echo 'Patch changed since approval. Start a new run.' >&2
+  exit 1
+fi
+if git cat-file blob "$current" | git apply --reverse --check - 2>/dev/null; then
+  exit 0
+fi
+git cat-file blob "$current" | git apply -
+```
+
+The apply reads the verified blob. If a run stops just after creating the
+file, the reverse check recognizes the applied patch on resume. For a
+remote deployment, use the approved digest and target as the deployment
+service's idempotency key so the service can recognize a repeated request.
 
 ### Tools
 
