@@ -1,7 +1,7 @@
 # Scheduling
 
 `atelier schedule daemon` runs conduits on a wall-clock schedule. One schedule is
-one YAML (or JSON) file under `.atelier/schedules/<name>.yaml`. The daemon is a
+one persisted YAML file under `~/.atelier/schedules/`. The daemon is a
 single foreground process you can put under `systemd`, `launchd`, or any
 supervisor.
 
@@ -73,8 +73,9 @@ indistinguishable from one that already ran.
 ## Managing schedules
 
 ```bash
-atelier schedule add <file.{json,yaml}>    # install into .atelier/schedules/
+atelier schedule add <file.{json,yaml}>    # install into ~/.atelier/schedules/
 atelier list schedules [--json]           # installed schedules + next fire times
+atelier schedule migrate                  # move this project's legacy jobs
 atelier schedule rm <id-or-name>          # hard delete
 atelier schedule run-now <id-or-name>      # fire immediately, bypassing the daemon
 atelier schedule history <id-or-name> [--json]  # recorded runs, newest first
@@ -91,9 +92,10 @@ atelier list schedules [--json]
 
 `schedule daemon` runs in the foreground; Ctrl+C or SIGTERM stops it.
 `atelier serve` boots the same scheduler embedded alongside the HTTP server, so
-you do not need both.
+run only one of them for the shared store. Additional dashboards can use
+`atelier serve --no-scheduler`.
 
-`list schedules` reads `.atelier/schedules/` **directly and does not contact a
+`list schedules` reads `~/.atelier/schedules/` **directly and does not contact a
 running daemon**. It tells you what is installed and when it would next fire, not
 whether anything is actually running. To confirm the daemon is alive, check the
 process. When a scheduled run did not happen, follow
@@ -102,7 +104,7 @@ process. When a scheduled run did not happen, follow
 ## Daemon behavior
 
 - New or removed schedules are picked up on the next reload tick (default 30s).
-- One-shot schedules remember they fired, in `.atelier/scheduler_state.json`, so
+- One-shot schedules remember they fired, in `~/.atelier/scheduler_state.json`, so
   a daemon restart never re-runs them.
 - Each schedule runs **at most one instance at a time**; missed fires are
   coalesced rather than queued up.
@@ -126,6 +128,15 @@ daemon invokes the conduit directly with nothing to wrap.
 
 ## Where schedules live
 
-The CLI installs into `.atelier/schedules/` relative to the working directory.
-`atelier serve` is the exception: it reads `~/.atelier/schedules/`, since one
-daemon serves every project.
+The CLI and API share `~/.atelier/schedules/`. Set `ATELIER_GLOBAL_ATELIER_DIR`
+in your shell to change the global root. Both `schedule add` and scheduler-enabled
+`serve` print the directory. New jobs resolve a relative `run_path` against the
+working directory where you add them.
+
+Stop old project daemons before upgrading. In each directory where an old daemon
+ran, `atelier list schedules` reports legacy jobs in the configured project
+store. Run `atelier schedule migrate` there to move them without firing any.
+Scheduler-enabled `serve`, `schedule daemon`, and writable schedule commands
+also migrate that project's jobs. Job IDs, run counts, fire markers and history
+move with the job. Relative run paths are anchored to the current directory.
+Name or ID conflicts leave the original in place and produce a warning.

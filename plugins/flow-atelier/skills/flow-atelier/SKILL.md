@@ -38,7 +38,7 @@ not supported. Windows uses `irm .../install.ps1 | iex`. With Python 3.13+ and u
 ```bash
 atelier init                          # writes .atelier/conduits/hello/
 atelier run hello --input name=world
-atelier serve                         # visual editor and run pages on :8000
+atelier serve --no-scheduler          # visual editor and run pages on :8000
 ```
 
 For a newcomer, [first run](references/first-run.md) gives a verified shell-only
@@ -226,7 +226,7 @@ listing      list conduits · list flows · list harnesses · list schedules
 cleanup      rm · prune
 agents       harness check · harness sync
 packages     install · update · uninstall
-scheduling   schedule add|rm|run-now|history|daemon
+scheduling   schedule add|migrate|rm|run-now|history|daemon
 server       serve
 upgrading    self-update
 ```
@@ -262,15 +262,13 @@ starts, and again in your final report.
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows
    # 000 = no server: start one, in the background so it outlives your command
-   nohup atelier serve --idle-exit 30 > .atelier/serve.log 2>&1 &
+   nohup atelier serve --no-scheduler --idle-exit 30 > .atelier/serve.log 2>&1 &
    ```
 
-   `--idle-exit 30` makes it stop by itself 30 minutes after the run ends and
-   the page is closed. If the installed atelier rejects the flag (older than
-   the release that added it), start it without the flag and tell the user it
-   keeps running until they stop it. Tell the user you started it and that,
-   while up, it also fires the schedules in `~/.atelier/schedules/`. Keep the
-   default loopback host; never bind `0.0.0.0` for this.
+   Tell the user you started a viewer with the scheduler disabled. It stops
+   after the run ends and the page has been closed for 30 minutes. Keep the
+   default loopback host. If the installed version lacks `--no-scheduler`,
+   suggest upgrading before starting a run-page viewer.
 
 2. **Read the link.** Right after `starting flow <id>` (or `resuming flow <id>`)
    the run prints:
@@ -304,11 +302,12 @@ earlier). Say so and suggest an upgrade instead of sending a dead link.
 ```
 .atelier/
   conduits/<name>/conduit.yaml      project conduits (also ~/.atelier/conduits/)
-  schedules/<name>.yaml             one file per schedule
-  scheduler_state.json              fired-once markers
   flows/<flow_id>/                  <YYYYMMDD>_<uuid8>_<conduit>
     input.yaml  logs.jsonl  progress.json  outputs.yaml
     flows/<child_flow_id>/          nested tool:conduit runs
+~/.atelier/
+  schedules/<name>.yaml             shared schedules
+  scheduler_state.json              fired-once markers and run history
 ```
 
 Conduits resolve **project first, then global** (`~/.atelier/conduits/`); a
