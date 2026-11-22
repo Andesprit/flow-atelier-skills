@@ -21,8 +21,9 @@ schedule:
   timezone: America/Bogota    # optional IANA name; defaults to the host zone
 ```
 
-`run_path` matters: flows are always written relative to it, and conduits
-resolve from `<run_path>/.atelier/conduits` before the global store.
+`run_path` sets the working directory. Conduits resolve from
+`<run_path>/.atelier/conduits` before the global store. The run journal lives
+in `~/.atelier/projects/` and includes the project path.
 
 Unknown fields are rejected, so a typo is a load error rather than a silently
 ignored setting.

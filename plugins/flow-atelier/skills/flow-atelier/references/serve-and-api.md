@@ -36,7 +36,7 @@ without it the server runs until stopped.
 | `GET` | `/schedules` | List active schedules |
 | `POST` | `/schedules` | Create |
 | `DELETE` | `/schedules/:id` | Soft-delete |
-| `GET` | `/flows` | List prior flows |
+| `GET` | `/flows` | List global run history, optionally filtered by `?project=<directory>` |
 | `GET` | `/flows/:id/logs` | Per-flow log entries |
 | `GET` | `/flows/:id` | Tasks, dependencies and progress |
 | `GET` | `/flows/:id/tasks/:task/log` | One task's rounds and actions, secrets masked |
@@ -57,12 +57,11 @@ from `ATELIER_SERVE_URL` (default `http://127.0.0.1:8000`); the CLI does not
 check that a server is up. Export `ATELIER_SERVE_URL` in the shell: since
 0.14.0 a `.env` value is ignored.
 
-The page loads only while `atelier serve` runs from the **same directory** as
-the run, because the server reads flows from its own `./.atelier/`. A quick
-probe: `GET /flows/<flow_id>` answers `200` when the server sees the run, `404`
-when it belongs to another directory, and `401` when `ATELIER_API_TOKEN` is set
-(the page then asks for the token once). Flow Atelier 0.7.0 and earlier have
-no run page.
+The page loads while `atelier serve` uses the same global store as the run.
+For a legacy project-local run, start the server from the original project.
+`GET /flows/<flow_id>` returns `200` when the server finds the run, `404` when
+the run is unavailable, and `401` when it requires `ATELIER_API_TOKEN`. The
+page prompts for the token once.
 
 `POST /tasks/run` takes `{name, description, task, tool, run_path}` and runs it
 as a throwaway one-task conduit - useful for trying a single step without writing
@@ -77,9 +76,9 @@ a file.
 
 ## Resolution
 
-Conduits and flows resolve exactly as on the CLI - `./.atelier` first, then
-`~/.atelier` - so the conduits in the directory you started the server from are
-the ones the UI shows.
+Conduits resolve from the server's project first, then from the global store.
+Run history includes all projects in the global store. Use the project filter
+to show one project.
 
 Schedules are shared across projects in `~/.atelier/schedules/`. The CLI, API
 and daemon use the same global root, configurable with
@@ -150,8 +149,8 @@ screen.
 
 That is a heuristic that reduces casual leakage, **not a guarantee** - it will
 miss a secret that does not look like one. The recorded logs under
-`.atelier/flows/<id>/` keep the **unredacted** text, so treat that directory as
-sensitive and check what you are pasting before sharing a terminal transcript.
+`~/.atelier/projects/<encoded-project>/` keep the **unredacted** text, so treat
+that directory as sensitive and check what you paste before sharing a transcript.
 
 ### Conduits are code
 

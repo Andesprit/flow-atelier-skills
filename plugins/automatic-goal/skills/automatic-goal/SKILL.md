@@ -125,13 +125,14 @@ requested.
 **Run page.** When the flow starts, its log shows
 `· run page http://127.0.0.1:8000/runs/<flow_id>`: a live map of the stages with each
 agent's log, much like an artifact. Give the user that link as soon as the run is
-verified, and again in every status update and report. The page loads only while
-`atelier serve` runs from the goal worktree. Check it with
+verified, and again in every status update and report. In 0.15.0, the page loads
+while `atelier serve` uses the same global store. In 0.14.x, serve from the goal
+worktree. Check it with
 `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows/<flow_id>`:
 `200` is ready; `401` means `ATELIER_API_TOKEN` is set and the page asks for it once.
 Otherwise start a server from the worktree with
 `nohup atelier serve --idle-exit 30 > .atelier/serve.log 2>&1 &` (add `--port <free port>`
-and change the link if 8000 answers `404`, which means it serves another directory). It
+and change the link if the server on 8000 cannot find the run). It
 stops by itself 30 minutes after the run ends and the page is closed; if the installed
 atelier rejects `--idle-exit`, drop the flag and tell the user it keeps running until
 they stop it. Tell the user you started it and that, while up, it also fires the
@@ -218,7 +219,10 @@ presence here. Require new evidence before retrying a rejected approach. Legacy 
 can be imported with `python3 .atelier/conduits/goal_iteration/scripts/memory.py attach`;
 originals remain in `.atelier/implementations-local-backup/`. Never stage journals or raw
 logs. Shared records and checkpoint refs survive worktree deletion but remain local;
-normal Git pushes do not transfer them. Flow logs stay in their originating worktree.
+normal Git pushes do not transfer them. In 0.15.0, Atelier stores flow logs in
+`~/.atelier/projects/<encoded-project>/`, keyed to the originating worktree.
+Removing the worktree leaves its global history available to Atelier. In 0.14.x,
+flow logs live in the worktree.
 
 For reports use the installed `goal_loop/scripts/observe.py` with `report`, `json` or
 `serve`. Start with outcome status, elapsed time, all completed improvements and still-open
