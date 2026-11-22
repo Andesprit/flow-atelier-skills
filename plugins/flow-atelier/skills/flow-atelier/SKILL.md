@@ -347,7 +347,7 @@ linked by parent flow ID. Set `ATELIER_GLOBAL_ATELIER_DIR` in the shell to use
 another global store. Use `atelier list flows --project .` to filter history to
 the current project.
 
-Finished runs are kept by default. Set `cleanup_period_days` in user settings
+Finished runs are kept by default. Set `cleanupPeriodDays` in user settings
 to enable automatic deletion after the configured number of days.
 
 ## Traps worth knowing up front
