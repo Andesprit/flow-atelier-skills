@@ -18,7 +18,7 @@ Source: <https://github.com/Andesprit/flow-atelier>
 |---|---|
 | **Conduit** | A recipe. One YAML file at `.atelier/conduits/<name>/conduit.yaml` |
 | **Task** | One checkable result. Give an agent the skills, goal and acceptance check it needs to deliver it. |
-| **Flow** | One run of a conduit, saved under `.atelier/flows/<flow_id>/` |
+| **Flow** | One run of a conduit, recorded in `~/.atelier/projects/<encoded-project>/<flow_id>.jsonl` |
 | **Harness** | An AI coding agent a task can hand work to |
 | **HITL** | A step that pauses and asks a person a typed question |
 
@@ -281,9 +281,10 @@ run goes. Whenever you start a flow (`atelier run`, `--resume`, `--again`,
 `atelier ask`, a package conduit), give the user its link as soon as the flow
 starts, and again in your final report.
 
-1. **Have a server for this directory.** The page is served by `atelier serve`,
-   which only sees flows under the `.atelier/` of the directory it started in.
-   Before the run, from the directory you will run `atelier` in:
+1. **Have a server for this run.** `atelier serve` can show runs from any
+   project that shares its global store. For a legacy project-local run, start
+   the server from the original project. Before the run, check the server from
+   the directory you will run `atelier` in.
 
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/flows
@@ -315,10 +316,11 @@ starts, and again in your final report.
    ```
 
    `200` is ready. `401` means the server has `ATELIER_API_TOKEN` set; the page
-   asks for the token once. `404` means the server on that port belongs to
-   another directory: start one here with `--port <free port>`, change the port
-   in the link, and `export ATELIER_SERVE_URL=http://127.0.0.1:<port>` in the
-   shell for later runs so the printed link matches. Atelier 0.14.0 ignores
+   asks for the token once. On `404`, confirm the flow ID and check that the
+   server uses the run's global store. If you need another server, start it with
+   `--port <free port>`, change the port in the link, and
+   `export ATELIER_SERVE_URL=http://127.0.0.1:<port>` in the shell for later
+   runs so the printed link matches. Atelier 0.14.0 ignores
    this setting in a `.env` file.
 
 No `run page` line means the installed atelier has no run page (0.7.0 and
@@ -327,19 +329,26 @@ earlier). Say so and suggest an upgrade instead of sending a dead link.
 ## Where things live
 
 ```
-.atelier/
-  conduits/<name>/conduit.yaml      project conduits (also ~/.atelier/conduits/)
-  flows/<flow_id>/                  <YYYYMMDD>_<uuid8>_<conduit>
-    input.yaml  logs.jsonl  progress.json  outputs.yaml
-    flows/<child_flow_id>/          nested tool:conduit runs
+<project>/.atelier/
+  conduits/<name>/conduit.yaml
 ~/.atelier/
-  schedules/<name>.yaml             shared schedules
-  scheduler_state.json              fired-once markers and run history
+  conduits/<name>/conduit.yaml       shared conduits
+  projects/<encoded-project>/
+    <flow_id>.jsonl                  run events, including inputs, progress, outputs and logs
+    <flow_id>/                       live steps and large output files
+  schedules/<slug>-<hash>.yaml       shared schedules
+  scheduler_state.json               fired-once markers and schedule history
 ```
 
 Conduits resolve **project first, then global** (`~/.atelier/conduits/`); a
-project conduit silently overrides a global one of the same name. Flows are
-always project-local, written under the directory you ran `atelier` from.
+project conduit silently overrides a global one of the same name. In 0.15.0,
+run journals include the full project path. Nested runs have their own journals
+linked by parent flow ID. Set `ATELIER_GLOBAL_ATELIER_DIR` in the shell to use
+another global store. Use `atelier list flows --project .` to filter history to
+the current project.
+
+Finished runs are kept by default. Set `cleanupPeriodDays` in user settings
+to enable automatic deletion after the configured number of days.
 
 ## Traps worth knowing up front
 
@@ -380,8 +389,8 @@ always project-local, written under the directory you ran `atelier` from.
   the next try sees its failure text in `{{loop.previous}}`. If the last try
   still fails, the task fails whatever `on_exhaust` says. Carry state across
   tries through `{{loop.history}}`, not `{{loop.previous}}`.
-- **`outputs.yaml` keeps only the last iteration** of a looped task. Skipped
-  tasks record `null`.
+- **`atelier outputs` reports the last iteration** of a looped task. Skipped
+  tasks report `null`.
 - **A conduit's "output" is its sink tasks** - the ones nothing else depends on.
   That is what a parent `tool:conduit` loop predicate matches against, and it
   sees *every* nested sub-task output of the iteration, firing on any match.
@@ -389,7 +398,8 @@ always project-local, written under the directory you ran `atelier` from.
   Read a package before installing it, and pin `--ref` for anything you do not
   control.
 - **Flow logs are unredacted.** Terminal output masks credential-shaped values,
-  but `.atelier/flows/<id>/` keeps the raw text. Treat it as sensitive.
+  but the run journal and its output files keep the raw text. Treat them as
+  sensitive.
 
 ## References
 

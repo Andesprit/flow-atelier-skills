@@ -200,34 +200,23 @@ timing, history, then diagnose. In short:
   daemon**. It cannot tell you the daemon is alive - check the process.
 - New or removed schedules are picked up on the next reload tick (default 30s).
 - A `once` schedule whose `run_at` is in the past is rejected at install time; one
-  that already fired is remembered in `.atelier/scheduler_state.json` and never
-  re-runs.
+  that already fired is remembered in the global store's `scheduler_state.json`.
 - Each schedule runs at most one instance at a time, and missed fires are
   coalesced rather than queued.
-- The CLI installs to `./.atelier/schedules/`; `atelier serve` reads
-  `~/.atelier/schedules/`. A schedule added on the CLI in a project directory
-  will not show up in the UI.
+- The CLI and server share `~/.atelier/schedules/` by default. Check
+  `ATELIER_GLOBAL_ATELIER_DIR` if a schedule is missing from one of them.
 
 ## Reading a finished run
 
-```
-.atelier/flows/<YYYYMMDD>_<uuid8>_<conduit>/
-  input.yaml       the inputs this run was given
-  logs.jsonl       append-only, one JSON object per line
-  progress.json    live per-task status
-  outputs.yaml     per-task outputs, written as tasks finish
-  flows/<child>/   nested tool:conduit runs, same shape
-```
+Use `atelier status <flow_id> --context` for saved inputs and progress and
+`atelier outputs <flow_id> --json` for task outputs. A looped task reports its
+last iteration and a skipped task reports `null`.
 
-`outputs.yaml` keeps only the **last** iteration of a looped task and records
-`null` for skipped ones:
-
-```yaml
-tick: 'tick 1
-
-  '
-after: null
-```
+Each run is recorded in `~/.atelier/projects/<encoded-project>/<flow_id>.jsonl`.
+The companion `<flow_id>/` directory holds live steps and large outputs. Child
+runs have separate journals linked by the parent flow ID. Finished runs are
+kept by default. Set `cleanupPeriodDays` in user settings to enable automatic
+cleanup.
 
 For per-iteration detail use `atelier logs <flow_id> -t <task> -s all`. For
 nested runs, `GET /flows/:id/logs` returns the whole descendant tree in one

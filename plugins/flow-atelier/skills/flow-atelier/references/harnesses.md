@@ -297,4 +297,4 @@ usage-limit message: since 0.14.0 that turn fails.
 the run is readable, with credential-shaped values (`Bearer <token>`, `sk-`,
 `ghp_`, `xox` prefixes, `--password` / `TOKEN=` flags) masked as `***` on the way
 to the screen. That masking is a heuristic, not a guarantee, and the recorded
-logs under `.atelier/flows/<id>/` keep the **unredacted** text.
+logs in `~/.atelier/projects/<encoded-project>/` keep the **unredacted** text.

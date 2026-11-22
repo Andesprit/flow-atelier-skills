@@ -51,9 +51,9 @@ need it to see the result. See "Show the user the run page" in the skill.
 ## What this proves, and what it does not
 
 It proves the CLI works, can create and validate a conduit, and can run a shell
-step and save the flow under `.atelier/flows/`. It does not prove that any coding
-agent is installed or logged in, that a packaged conduit is installed, or that a
-schedule will fire. Check an agent before its first use:
+step and save its run journal under `~/.atelier/projects/<encoded-project>/`.
+Agent logins, packages and scheduling each need their own check. Run the
+harness check before using an agent.
 
 ```bash
 atelier harness check claude-code

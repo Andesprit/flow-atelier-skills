@@ -144,12 +144,12 @@ wrong; 0.14.1 prints the correct one. When stdin is not a terminal, each answer 
 
 ```bash
 atelier diagnose <flow_id> [--json]
-atelier status <flow_id> [--json]
+atelier status <flow_id> [--context] [--json]
 atelier logs <flow_id> [-t TASK] [-s CHANNEL] [-n N] [-f] [--json]
 atelier outputs <flow_id> [-t TASK] [--json]
 atelier timing <flow_id> [--json]
 atelier list conduits [--json]
-atelier list flows [-c CONDUIT] [--json]
+atelier list flows [-c CONDUIT] [--project DIRECTORY] [--json]
 atelier compare <first_flow_id> <second_flow_id> [--json]
 atelier compare <conduit> [--json]           # compare its two newest runs
 ```
@@ -157,18 +157,17 @@ atelier compare <conduit> [--json]           # compare its two newest runs
 | Command | Reads | Use it for |
 |---|---|---|
 | `diagnose` | saved run records | first step after failure: cause, retained work and next commands |
-| `status` | `progress.json` | per-task state of a run, live or finished |
-| `logs` | `logs.jsonl` | what a task actually printed |
-| `outputs` | `outputs.yaml` | the value each task produced |
-| `timing` | `logs.jsonl` | per-task duration, slowest first |
+| `status` | progress events | per-task state of a run, live or finished |
+| `logs` | log events and live steps | what a task actually printed |
+| `outputs` | output events and files | the value each task produced |
+| `timing` | log events | per-task duration, slowest first |
 
 `logs -s/--show` picks the channel: `output` (default), `stdout`, `stderr`,
 `steps`, or `all`. `-n/--last N` limits to the last N entries. `-f/--follow`
 tails until the flow finishes.
 
 `outputs -t <task>` prints that task's raw output alone, which is pipe-friendly.
-Note `outputs.yaml` keeps only the **last** iteration of a looped task, and
-records `null` for skipped tasks.
+A looped task reports its **last** iteration. A skipped task reports `null`.
 
 `timing` sums repeated iterations, so a looped step shows its true total cost.
 

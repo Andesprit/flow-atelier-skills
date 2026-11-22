@@ -564,7 +564,7 @@ outputs. This matters in two places:
 
 - A parent `tool:conduit` task's `until` / `while` predicate matches against the
   nested run's outputs and fires on **any** match.
-- `outputs.yaml` records every task, but a caller reads the sinks.
+- `atelier outputs` shows every task's result. A parent task reads the sinks.
 
 Design a sub-conduit so the value you want to carry upward is emitted by a sink
 task. If several tasks are sinks, all of their outputs are in scope.
@@ -633,8 +633,8 @@ as a message and answered by the client.
       build_path: /tmp/build
 ```
 
-The nested run gets its own flow directory under
-`.atelier/flows/<parent>/flows/<child>/`. Its `inputs` are resolved in the
+The nested run gets its own journal in `~/.atelier/projects/<encoded-project>/`
+with the parent flow ID in its header. Its `inputs` are resolved in the
 parent's template scope before being passed down, so you can thread parent
 inputs and upstream task outputs into a child.
 
