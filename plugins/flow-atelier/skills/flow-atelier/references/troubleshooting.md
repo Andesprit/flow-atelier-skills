@@ -215,7 +215,7 @@ last iteration and a skipped task reports `null`.
 Each run is recorded in `~/.atelier/projects/<encoded-project>/<flow_id>.jsonl`.
 The companion `<flow_id>/` directory holds live steps and large outputs. Child
 runs have separate journals linked by the parent flow ID. Finished runs are
-kept by default. Set `cleanup_period_days` in user settings to enable automatic
+kept by default. Set `cleanupPeriodDays` in user settings to enable automatic
 cleanup.
 
 For per-iteration detail use `atelier logs <flow_id> -t <task> -s all`. For
